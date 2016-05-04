@@ -7,6 +7,15 @@ pub trait FallibleIterator {
     fn size_hint(&self) -> (usize, Option<usize>) {
         (0, None)
     }
+
+    fn count(mut self) -> Result<usize, Self::Error> where Self: Sized {
+        let mut count = 0;
+        while let Some(_) = try!(self.next()) {
+            count += 1;
+        }
+
+        Ok(count)
+    }
 }
 
 impl<T, E, I: Iterator<Item = Result<T, E>>> FallibleIterator for I {
