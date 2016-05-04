@@ -16,6 +16,13 @@ pub trait FallibleIterator {
 
         Ok(count)
     }
+
+    fn collect<T>(self) -> Result<T, Self::Error> where
+        T: FromFallibleIterator<Self::Item>,
+        Self: Sized
+    {
+        T::from_fallible_iterator(self)
+    }
 }
 
 impl<I: FallibleIterator + ?Sized> FallibleIterator for Box<I> {
@@ -36,6 +43,23 @@ pub trait DoubleEndedFallibleIterator: FallibleIterator {
 
     fn rev(self) -> Rev<Self> where Self: Sized {
         Rev(self)
+    }
+}
+
+pub trait FromFallibleIterator<T>: Sized {
+    fn from_fallible_iterator<I>(it: I) -> Result<Self, I::Error>
+        where I: FallibleIterator<Item = T>;
+}
+
+impl<T> FromFallibleIterator<T> for Vec<T> {
+    fn from_fallible_iterator<I>(mut it: I) -> Result<Self, I::Error>
+        where I: FallibleIterator<Item = T>
+    {
+        let mut vec = Vec::with_capacity(it.size_hint().0);
+        while let Some(v) = try!(it.next()) {
+            vec.push(v);
+        }
+        Ok(vec)
     }
 }
 
