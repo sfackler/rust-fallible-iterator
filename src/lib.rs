@@ -18,12 +18,31 @@ pub trait FallibleIterator {
     }
 }
 
-impl<T, E, I: Iterator<Item = Result<T, E>>> FallibleIterator for I {
+impl<I: FallibleIterator + ?Sized> FallibleIterator for Box<I> {
+    type Item = I::Item;
+    type Error = I::Error;
+
+    fn next(&mut self) -> Result<Option<I::Item>, I::Error> {
+        (**self).next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (**self).size_hint()
+    }
+}
+
+pub fn convert<T, E, I>(it: I) -> Convert<I> where I: Iterator<Item = Result<T, E>> {
+    Convert(it)
+}
+
+pub struct Convert<I>(I);
+
+impl<T, E, I: Iterator<Item = Result<T, E>>> FallibleIterator for Convert<I> {
     type Item = T;
     type Error = E;
 
     fn next(&mut self) -> Result<Option<T>, E> {
-        match Iterator::next(self) {
+        match self.0.next() {
             Some(Ok(i)) => Ok(Some(i)),
             Some(Err(e)) => Err(e),
             None => Ok(None),
@@ -31,6 +50,6 @@ impl<T, E, I: Iterator<Item = Result<T, E>>> FallibleIterator for I {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        Iterator::size_hint(self)
+        self.0.size_hint()
     }
 }
