@@ -10,7 +10,7 @@ pub trait FallibleIterator {
         (0, None)
     }
 
-    fn by_ref(&mut self) -> &mut Self {
+    fn by_ref(&mut self) -> &mut Self where Self: Sized {
         self
     }
 
