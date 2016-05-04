@@ -1,3 +1,5 @@
+use std::cmp;
+
 pub trait FallibleIterator {
     type Item;
     type Error;
@@ -23,6 +25,32 @@ pub trait FallibleIterator {
     {
         T::from_fallible_iterator(self)
     }
+
+    fn take(self, n: usize) -> Take<Self> where Self: Sized {
+        Take {
+            it: self,
+            remaining: n,
+        }
+    }
+}
+
+impl<'a, I: FallibleIterator + ?Sized> FallibleIterator for &'a mut I {
+    type Item = I::Item;
+    type Error = I::Error;
+
+    fn next(&mut self) -> Result<Option<I::Item>, I::Error> {
+        (**self).next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (**self).size_hint()
+    }
+}
+
+impl<'a, I: DoubleEndedFallibleIterator + ?Sized> DoubleEndedFallibleIterator for &'a mut I {
+    fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
+        (**self).next_back()
+    }
 }
 
 impl<I: FallibleIterator + ?Sized> FallibleIterator for Box<I> {
@@ -35,6 +63,12 @@ impl<I: FallibleIterator + ?Sized> FallibleIterator for Box<I> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         (**self).size_hint()
+    }
+}
+
+impl<I: DoubleEndedFallibleIterator + ?Sized> DoubleEndedFallibleIterator for Box<I> {
+    fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
+        (**self).next_back()
     }
 }
 
@@ -86,6 +120,16 @@ impl<T, E, I: Iterator<Item = Result<T, E>>> FallibleIterator for Convert<I> {
     }
 }
 
+impl<T, E, I: DoubleEndedIterator<Item = Result<T, E>>> DoubleEndedFallibleIterator for Convert<I> {
+    fn next_back(&mut self) -> Result<Option<T>, E> {
+        match self.0.next_back() {
+            Some(Ok(i)) => Ok(Some(i)),
+            Some(Err(e)) => Err(e),
+            None => Ok(None),
+        }
+    }
+}
+
 pub struct Rev<I>(I);
 
 impl<I> FallibleIterator for Rev<I> where I: DoubleEndedFallibleIterator {
@@ -108,5 +152,32 @@ impl<I> FallibleIterator for Rev<I> where I: DoubleEndedFallibleIterator {
 impl<I> DoubleEndedFallibleIterator for Rev<I> where I: DoubleEndedFallibleIterator {
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
         self.0.next()
+    }
+}
+
+pub struct Take<I> {
+    it: I,
+    remaining: usize,
+}
+
+impl<I> FallibleIterator for Take<I> where I: FallibleIterator {
+    type Item = I::Item;
+    type Error = I::Error;
+
+    fn next(&mut self) -> Result<Option<I::Item>, I::Error> {
+        if self.remaining == 0 {
+            return Ok(None);
+        }
+
+        let next = self.it.next();
+        if let Ok(Some(_)) = next {
+            self.remaining -= 1;
+        }
+        next
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let hint = self.it.size_hint();
+        (cmp::min(hint.0, self.remaining), hint.1.map(|n| cmp::min(n, self.remaining)))
     }
 }
