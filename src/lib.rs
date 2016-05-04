@@ -185,3 +185,10 @@ impl<I> FallibleIterator for Take<I> where I: FallibleIterator {
         (cmp::min(hint.0, self.remaining), hint.1.map(|n| cmp::min(n, self.remaining)))
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn _is_object_safe(_: &FallibleIterator<Item = (), Error = ()>) {}
+}
