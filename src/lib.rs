@@ -10,6 +10,10 @@ pub trait FallibleIterator {
         (0, None)
     }
 
+    fn by_ref(&mut self) -> &mut Self {
+        self
+    }
+
     fn count(mut self) -> Result<usize, Self::Error> where Self: Sized {
         let mut count = 0;
         while let Some(_) = try!(self.next()) {
