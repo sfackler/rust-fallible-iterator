@@ -62,6 +62,13 @@ pub trait FallibleIterator {
         T::from_fallible_iterator(self)
     }
 
+    fn fuse(self) -> Fuse<Self> where Self: Sized {
+        Fuse {
+            it: self,
+            done: false,
+        }
+    }
+
     /// Creates an iterator that yields this iterator's items in the opposite
     /// order.
     fn rev(self) -> Rev<Self> where Self: Sized + DoubleEndedFallibleIterator {
@@ -159,6 +166,35 @@ impl<T, E, I: Iterator<Item = Result<T, E>>> FallibleIterator for Convert<I> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.0.size_hint()
+    }
+}
+
+pub struct Fuse<I> {
+    it: I,
+    done: bool,
+}
+
+impl<I> FallibleIterator for Fuse<I> where I: FallibleIterator {
+    type Item = I::Item;
+    type Error = I::Error;
+
+    fn next(&mut self) -> Result<Option<I::Item>, I::Error> {
+        if self.done {
+            return Ok(None);
+        }
+
+        match self.it.next() {
+            Ok(Some(i)) => Ok(Some(i)),
+            Ok(None) => {
+                self.done = true;
+                Ok(None)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.it.size_hint()
     }
 }
 
