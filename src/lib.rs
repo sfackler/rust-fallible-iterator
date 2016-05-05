@@ -150,6 +150,7 @@ pub fn convert<T, E, I>(it: I) -> Convert<I> where I: Iterator<Item = Result<T, 
     Convert(it)
 }
 
+#[derive(Debug)]
 pub struct Convert<I>(I);
 
 impl<T, E, I: Iterator<Item = Result<T, E>>> FallibleIterator for Convert<I> {
@@ -169,6 +170,7 @@ impl<T, E, I: Iterator<Item = Result<T, E>>> FallibleIterator for Convert<I> {
     }
 }
 
+#[derive(Debug)]
 pub struct Fuse<I> {
     it: I,
     done: bool,
@@ -208,6 +210,7 @@ impl<T, E, I: DoubleEndedIterator<Item = Result<T, E>>> DoubleEndedFallibleItera
     }
 }
 
+#[derive(Debug)]
 pub struct Rev<I>(I);
 
 impl<I> FallibleIterator for Rev<I> where I: DoubleEndedFallibleIterator {
@@ -233,6 +236,7 @@ impl<I> DoubleEndedFallibleIterator for Rev<I> where I: DoubleEndedFallibleItera
     }
 }
 
+#[derive(Debug)]
 pub struct Take<I> {
     it: I,
     remaining: usize,
