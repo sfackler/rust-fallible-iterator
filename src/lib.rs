@@ -1,19 +1,48 @@
 use std::cmp;
 
+/// An `Iterator`-like trait that allows for calculation of items to fail.
 pub trait FallibleIterator {
+    /// The type being iterated over.
     type Item;
+
+    /// The error type.
     type Error;
 
+    /// Advances the iterator and returns the next value.
+    ///
+    /// Returns `Ok(None)` when iteration is finished.
+    ///
+    /// If the method returns an `Err`, the state of the iterator is
+    /// implementation defined.
     fn next(&mut self) -> Result<Option<Self::Item>, Self::Error>;
 
+    /// Returns bounds on the remaining length of the iterator.
+    ///
+    /// Specifically, the first half of the returned tuple is a lower bound and
+    /// the second half is an upper bound.
+    ///
+    /// For the upper bound, `None` indicates that the upper bound is either
+    /// unknown or larger than can be represented as a `usize`.
+    ///
+    /// Both bounds assume that all remaining calls to `next` succeed. That is,
+    /// `next` could return an `Err` in fewer calls than specified by the lower
+    /// bound.
+    ///
+    /// The default implementation returns `(0, None)`, which is correct for
+    /// any iterator.
     fn size_hint(&self) -> (usize, Option<usize>) {
         (0, None)
     }
 
+    /// Borrow an iterator rather than consuming it.
+    ///
+    /// This is useful to allow the use of iterator adaptors that would
+    /// otherwise consume the value.
     fn by_ref(&mut self) -> &mut Self where Self: Sized {
         self
     }
 
+    /// Consumes the iterator, returning the number of remaining items.
     fn count(mut self) -> Result<usize, Self::Error> where Self: Sized {
         let mut count = 0;
         while let Some(_) = try!(self.next()) {
@@ -23,6 +52,9 @@ pub trait FallibleIterator {
         Ok(count)
     }
 
+    /// Transforms the iterator into a collection.
+    ///
+    /// An `Err` will be returned if any invocation of `next` returns `Err`.
     fn collect<T>(self) -> Result<T, Self::Error> where
         T: FromFallibleIterator<Self::Item>,
         Self: Sized
@@ -30,6 +62,14 @@ pub trait FallibleIterator {
         T::from_fallible_iterator(self)
     }
 
+    /// Creates an iterator that yields this iterator's items in the opposite
+    /// order.
+    fn rev(self) -> Rev<Self> where Self: Sized + DoubleEndedFallibleIterator {
+        Rev(self)
+    }
+
+    /// Creates an iterator that yeilds only the first `n` values of this
+    /// iterator.
     fn take(self, n: usize) -> Take<Self> where Self: Sized {
         Take {
             it: self,
@@ -76,12 +116,10 @@ impl<I: DoubleEndedFallibleIterator + ?Sized> DoubleEndedFallibleIterator for Bo
     }
 }
 
+/// A fallible iterator able to yield elements from both ends.
 pub trait DoubleEndedFallibleIterator: FallibleIterator {
+    /// Advances the end of the iterator, returning the last value.
     fn next_back(&mut self) -> Result<Option<Self::Item>, Self::Error>;
-
-    fn rev(self) -> Rev<Self> where Self: Sized {
-        Rev(self)
-    }
 }
 
 pub trait FromFallibleIterator<T>: Sized {
