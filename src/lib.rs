@@ -62,7 +62,7 @@ pub trait FallibleIterator {
         T::from_fallible_iterator(self)
     }
 
-    /// Creates an iterator which yields this iterator's elements and ends after
+    /// Returns an iterator which yields this iterator's elements and ends after
     /// the frist `Ok(None)`.
     ///
     /// The behavior of calling `next` after it has previously returned
@@ -84,6 +84,18 @@ pub trait FallibleIterator {
         Ok(last)
     }
 
+    /// Returns an iterator which applies a transform to the elements of the
+    /// underlying iterator.
+    fn map<B, F>(self, f: F) -> Map<Self, F>
+        where F: FnMut(Self::Item) -> B,
+              Self: Sized
+    {
+        Map {
+            it: self,
+            f: f,
+        }
+    }
+
     /// Returns the `n`th element of the iterator.
     fn nth(&mut self, mut n: usize) -> Result<Option<Self::Item>, Self::Error> {
         let mut it = self.take(n);
@@ -96,13 +108,13 @@ pub trait FallibleIterator {
         Ok(None)
     }
 
-    /// Creates an iterator that yields this iterator's items in the opposite
+    /// Returns an iterator that yields this iterator's items in the opposite
     /// order.
     fn rev(self) -> Rev<Self> where Self: Sized + DoubleEndedFallibleIterator {
         Rev(self)
     }
 
-    /// Creates an iterator that yeilds only the first `n` values of this
+    /// Returns an iterator that yeilds only the first `n` values of this
     /// iterator.
     fn take(self, n: usize) -> Take<Self> where Self: Sized {
         Take {
@@ -238,6 +250,43 @@ impl<T, E, I: DoubleEndedIterator<Item = Result<T, E>>> DoubleEndedFallibleItera
             Some(Err(e)) => Err(e),
             None => Ok(None),
         }
+    }
+}
+
+/// An iterator which applies a transform to the elements of the underlying
+/// iterator.
+#[derive(Debug)]
+pub struct Map<I, F> {
+    it: I,
+    f: F,
+}
+
+impl<B, F, I> FallibleIterator for Map<I, F>
+    where I: FallibleIterator,
+          F: FnMut(I::Item) -> B
+{
+    type Item = B;
+    type Error = I::Error;
+
+    fn next(&mut self) -> Result<Option<B>, I::Error> {
+        self.it.next().map(|o| o.map(|i| (self.f)(i)))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.it.size_hint()
+    }
+
+    fn count(self) -> Result<usize, I::Error> {
+        self.it.count()
+    }
+}
+
+impl<B, F, I> DoubleEndedFallibleIterator for Map<I, F>
+    where I: DoubleEndedFallibleIterator,
+          F: FnMut(I::Item) -> B
+{
+    fn next_back(&mut self) -> Result<Option<B>, I::Error> {
+        self.it.next_back().map(|o| o.map(|i| (self.f)(i)))
     }
 }
 
