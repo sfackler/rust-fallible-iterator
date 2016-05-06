@@ -42,6 +42,8 @@
 //!     // work with item
 //! }
 //! ```
+#![doc(html_root_url = "https://sfackler.github.io/rust-fallible-iterator/doc/v0.1.0")]
+
 use std::cmp;
 
 /// An `Iterator`-like trait that allows for calculation of items to fail.
