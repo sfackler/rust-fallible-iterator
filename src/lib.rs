@@ -42,6 +42,19 @@ pub trait FallibleIterator {
         self
     }
 
+    /// Returns an iterator which yields the elements of this iterator followed
+    /// by another.
+    fn chain<I>(self, it: I) -> Chain<Self, I>
+        where I: IntoFallibleIterator<Item = Self::Item, Error = Self::Error>,
+              Self: Sized
+    {
+        Chain {
+            front: self,
+            back: it,
+            state: ChainState::Both,
+        }
+    }
+
     /// Returns an iterator which clones all of its elements.
     fn cloned<'a, T>(self) -> Cloned<Self>
         where Self: Sized + FallibleIterator<Item = &'a T>,
@@ -208,6 +221,108 @@ impl<T> FromFallibleIterator<T> for Vec<T> {
             vec.push(v);
         }
         Ok(vec)
+    }
+}
+
+/// Conversion into a `FallibleIterator`.
+pub trait IntoFallibleIterator {
+    type Item;
+    type Error;
+    type IntoIter: FallibleIterator<Item = Self::Item, Error = Self::Error>;
+
+    fn into_fallible_iterator(self) -> Self::IntoIter;
+}
+
+impl<I> IntoFallibleIterator for I
+    where I: FallibleIterator
+{
+    type Item = I::Item;
+    type Error = I::Error;
+    type IntoIter = I;
+
+    fn into_fallible_iterator(self) -> I {
+        self
+    }
+}
+
+#[derive(Debug)]
+enum ChainState {
+    Both,
+    Front,
+    Back,
+}
+
+/// An iterator which yields the elements of one iterator followed by another.
+#[derive(Debug)]
+pub struct Chain<T, U> {
+    front: T,
+    back: U,
+    state: ChainState,
+}
+
+impl<T, U> FallibleIterator for Chain<T, U>
+    where T: FallibleIterator,
+          U: FallibleIterator<Item = T::Item, Error = T::Error>
+{
+    type Item = T::Item;
+    type Error = T::Error;
+
+    fn next(&mut self) -> Result<Option<T::Item>, T::Error> {
+        match self.state {
+            ChainState::Both => {
+                match try!(self.front.next()) {
+                    Some(e) => Ok(Some(e)),
+                    None => {
+                        self.state = ChainState::Back;
+                        self.back.next()
+                    }
+                }
+            }
+            ChainState::Front => self.front.next(),
+            ChainState::Back => self.back.next(),
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let front_hint = self.front.size_hint();
+        let back_hint = self.back.size_hint();
+
+        let low = front_hint.0.saturating_add(back_hint.0);
+        let high = match (front_hint.1, back_hint.1) {
+            (Some(f), Some(b)) => f.checked_add(b),
+            _ => None,
+        };
+
+        (low, high)
+    }
+
+    fn count(self) -> Result<usize, T::Error> {
+        match self.state {
+            ChainState::Both => Ok(try!(self.front.count()) + try!(self.back.count())),
+            ChainState::Front => self.front.count(),
+            ChainState::Back => self.back.count(),
+        }
+    }
+}
+
+impl<T, U> DoubleEndedFallibleIterator for Chain<T, U>
+    where T: DoubleEndedFallibleIterator,
+          U: DoubleEndedFallibleIterator<Item = T::Item, Error = T::Error>
+{
+    fn next_back(&mut self) -> Result<Option<T::Item>, T::Error> {
+        match self.state {
+            ChainState::Both => {
+                match try!(self.back.next_back()) {
+                    Some(e) => Ok(Some(e)),
+                    None => {
+                        self.state = ChainState::Front;
+                        self.front.next_back()
+                    }
+                }
+            }
+            ChainState::Front => self.front.next_back(),
+            ChainState::Back => self.back.next_back(),
+        }
     }
 }
 
