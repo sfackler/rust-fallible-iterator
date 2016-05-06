@@ -75,6 +75,27 @@ pub trait FallibleIterator {
         }
     }
 
+    /// Returns the last element of the iterator.
+    fn last(mut self) -> Result<Option<Self::Item>, Self::Error> where Self: Sized {
+        let mut last = None;
+        while let Some(e) = try!(self.next()) {
+            last = Some(e);
+        }
+        Ok(last)
+    }
+
+    /// Returns the `n`th element of the iterator.
+    fn nth(&mut self, mut n: usize) -> Result<Option<Self::Item>, Self::Error> {
+        let mut it = self.take(n);
+        while let Some(e) = try!(it.next()) {
+            if n == 0 {
+                return Ok(Some(e));
+            }
+            n -= 1;
+        }
+        Ok(None)
+    }
+
     /// Creates an iterator that yields this iterator's items in the opposite
     /// order.
     fn rev(self) -> Rev<Self> where Self: Sized + DoubleEndedFallibleIterator {
