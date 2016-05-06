@@ -117,6 +117,15 @@ pub trait FallibleIterator {
         Ok(None)
     }
 
+    /// Returns an iterator that can peek at the next element without consuming
+    /// it.
+    fn peekable(self) -> Peekable<Self> where Self: Sized {
+        Peekable {
+            it: self,
+            next: None,
+        }
+    }
+
     /// Returns an iterator that yields this iterator's items in the opposite
     /// order.
     fn rev(self) -> Rev<Self> where Self: Sized + DoubleEndedFallibleIterator {
@@ -329,6 +338,46 @@ impl<B, F, I> DoubleEndedFallibleIterator for Map<I, F>
 {
     fn next_back(&mut self) -> Result<Option<B>, I::Error> {
         self.it.next_back().map(|o| o.map(|i| (self.f)(i)))
+    }
+}
+
+/// An iterator which can look at the next element without consuming it.
+#[derive(Debug)]
+pub struct Peekable<I: FallibleIterator> {
+    it: I,
+    next: Option<I::Item>,
+}
+
+impl<I> Peekable<I> where I: FallibleIterator {
+    /// Returns a reference to the next value without advancing the iterator.
+    pub fn peek(&mut self) -> Result<Option<&I::Item>, I::Error> {
+        if self.next.is_none() {
+            self.next = try!(self.it.next());
+        }
+
+        Ok(self.next.as_ref())
+    }
+}
+
+impl<I> FallibleIterator for Peekable<I> where I: FallibleIterator {
+    type Item = I::Item;
+    type Error = I::Error;
+
+    fn next(&mut self) -> Result<Option<I::Item>, I::Error> {
+        if let Some(next) = self.next.take() {
+            return Ok(Some(next));
+        }
+
+        self.it.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let mut hint = self.it.size_hint();
+        if self.next.is_some() {
+            hint.0 = hint.0.saturating_add(1);
+            hint.1 = hint.1.and_then(|h| h.checked_add(1));
+        }
+        hint
     }
 }
 
