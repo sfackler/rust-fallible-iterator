@@ -62,6 +62,15 @@ pub trait FallibleIterator {
         T::from_fallible_iterator(self)
     }
 
+    /// Returns an iterator which yields the current iteration count as well
+    /// as the value.
+    fn enumerate(self) -> Enumerate<Self> where Self: Sized {
+        Enumerate {
+            it: self,
+            n: 0,
+        }
+    }
+
     /// Returns an iterator which yields this iterator's elements and ends after
     /// the frist `Ok(None)`.
     ///
@@ -208,6 +217,39 @@ impl<T, E, I: Iterator<Item = Result<T, E>>> FallibleIterator for Convert<I> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.0.size_hint()
+    }
+}
+
+/// An iterator that yields the iteration count as well as the values of the
+/// underlying iterator.
+#[derive(Debug)]
+pub struct Enumerate<I> {
+    it: I,
+    n: usize,
+}
+
+impl<I> FallibleIterator for Enumerate<I> where I: FallibleIterator {
+    type Item = (usize, I::Item);
+    type Error = I::Error;
+
+    fn next(&mut self) -> Result<Option<(usize, I::Item)>, I::Error> {
+        self.it
+            .next()
+            .map(|o| {
+                o.map(|e| {
+                    let i = self.n;
+                    self.n += 1;
+                    (i, e)
+                })
+            })
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.it.size_hint()
+    }
+
+    fn count(self) -> Result<usize, I::Error> {
+        self.it.count()
     }
 }
 
