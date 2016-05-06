@@ -1,7 +1,7 @@
 [package]
 name = "fallible-iterator"
 version = "0.1.0"
-authors = ["Steven Fackler <sfackler@palantir.com>"]
+authors = ["Steven Fackler <sfackler@gmail.com>"]
 license = "MIT/Apache-2.0"
 description = "Fallible iterator traits"
 repository = "https://github.com/sfackler/rust-fallible-iterator"
