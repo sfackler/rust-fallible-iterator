@@ -1,3 +1,47 @@
+//! "Fallible" iterators.
+//!
+//! The iterator APIs in the rust standard library do not support iteration
+//! that can fail in a particularly robust way. The way that these iterators
+//! are typically modeled as iterators over `Result<T, E>`; for example, the
+//! `Lines` iterator returns `io::Result<String>`s. When simply iterating over
+//! these types, the value being iterated over either has be unwrapped in some
+//! way before it can be used:
+//!
+//! ```ignore
+//! for line in reader.lines() {
+//!     let line = try!(line);
+//!     // work with line
+//! }
+//! ```
+//!
+//! In addition, many of the additional methods on the `Iterator` trait will
+//! not behave properly in the presence of errors when working with these kinds
+//! of iterators. For example, if one wanted to count the number of lines of
+//! text in a `Read`er, this might be a way to go about it:
+//!
+//! ```ignore
+//! let count = reader.lines().count();
+//! ```
+//!
+//! This will return the proper value when the reader operates successfully, but
+//! if it encounters an IO error, the result will either be slightly higher than
+//! expected if the error is transient, or it may run forever if the error is
+//! returned repeatedly!
+//!
+//! In contrast, a fallible iterator is built around the concept that a call to
+//! `next` can fail. The trait has an additional `Error` associated type in
+//! addition to the `Item` type, and `next` returns `Result<Option<Self::Item>,
+//! Self::Error>` rather than `Option<Self::Item>`. Methods like `count` return
+//! `Result`s as well.
+//!
+//! This does mean that fallible iterators are incompatible with Rust's for loop
+//! syntax, but `while let` loops offer a similar level of ergonomics:
+//!
+//! ```ignore
+//! while let Some(item) = try!(iter.next()) {
+//!     // work with item
+//! }
+//! ```
 use std::cmp;
 
 /// An `Iterator`-like trait that allows for calculation of items to fail.
@@ -12,8 +56,8 @@ pub trait FallibleIterator {
     ///
     /// Returns `Ok(None)` when iteration is finished.
     ///
-    /// If the method returns an `Err`, the state of the iterator is
-    /// implementation defined.
+    /// The behavior of calling this method after a previous call has returned
+    /// `Ok(None)` or `Err` is implemenetation defined.
     fn next(&mut self) -> Result<Option<Self::Item>, Self::Error>;
 
     /// Returns bounds on the remaining length of the iterator.
