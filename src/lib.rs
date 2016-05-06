@@ -62,6 +62,12 @@ pub trait FallibleIterator {
         T::from_fallible_iterator(self)
     }
 
+    /// Creates an iterator which yields this iterator's elements and ends after
+    /// the frist `Ok(None)`.
+    ///
+    /// The behavior of calling `next` after it has previously returned
+    /// `Ok(None)` is normally unspecified. The iterator returned by this method
+    /// guarantees that `Ok(None)` will always be returned.
     fn fuse(self) -> Fuse<Self> where Self: Sized {
         Fuse {
             it: self,
@@ -146,10 +152,12 @@ impl<T> FromFallibleIterator<T> for Vec<T> {
     }
 }
 
+/// Converts an `Iterator<Item = Result<T, E>>` into a `FailingIterator<Item = T, Error = E>`.
 pub fn convert<T, E, I>(it: I) -> Convert<I> where I: Iterator<Item = Result<T, E>> {
     Convert(it)
 }
 
+/// A fallible iterator that wraps a normal iterator over `Result`s.
 #[derive(Debug)]
 pub struct Convert<I>(I);
 
@@ -170,6 +178,8 @@ impl<T, E, I: Iterator<Item = Result<T, E>>> FallibleIterator for Convert<I> {
     }
 }
 
+/// An iterator that yields `Ok(None)` forever after the underlying iterator
+/// yields `Ok(None)` once.
 #[derive(Debug)]
 pub struct Fuse<I> {
     it: I,
@@ -210,6 +220,8 @@ impl<T, E, I: DoubleEndedIterator<Item = Result<T, E>>> DoubleEndedFallibleItera
     }
 }
 
+/// An iterator which yields elements of the underlying iterator in reverse
+/// order.
 #[derive(Debug)]
 pub struct Rev<I>(I);
 
@@ -236,6 +248,8 @@ impl<I> DoubleEndedFallibleIterator for Rev<I> where I: DoubleEndedFallibleItera
     }
 }
 
+/// An iterator which yeilds a limited number of elements from the underlying
+/// iterator.
 #[derive(Debug)]
 pub struct Take<I> {
     it: I,
