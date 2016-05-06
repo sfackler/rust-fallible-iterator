@@ -42,6 +42,14 @@ pub trait FallibleIterator {
         self
     }
 
+    /// Returns an iterator which clones all of its elements.
+    fn cloned<'a, T>(self) -> Cloned<Self>
+        where Self: Sized + FallibleIterator<Item = &'a T>,
+              T: 'a + Clone
+    {
+        Cloned(self)
+    }
+
     /// Consumes the iterator, returning the number of remaining items.
     fn count(mut self) -> Result<usize, Self::Error> where Self: Sized {
         let mut count = 0;
@@ -200,6 +208,39 @@ impl<T> FromFallibleIterator<T> for Vec<T> {
             vec.push(v);
         }
         Ok(vec)
+    }
+}
+
+/// An iterator which clones the elements of the underlying iterator.
+#[derive(Debug)]
+pub struct Cloned<I>(I);
+
+impl<'a, T, I> FallibleIterator for Cloned<I>
+    where I: FallibleIterator<Item = &'a T>,
+          T: 'a + Clone
+{
+    type Item = T;
+    type Error = I::Error;
+
+    fn next(&mut self) -> Result<Option<T>, I::Error> {
+        self.0.next().map(|o| o.cloned())
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+
+    fn count(self) -> Result<usize, I::Error> {
+        self.0.count()
+    }
+}
+
+impl<'a, T, I> DoubleEndedFallibleIterator for Cloned<I>
+    where I: DoubleEndedFallibleIterator<Item = &'a T>,
+          T: 'a + Clone
+{
+    fn next_back(&mut self) -> Result<Option<T>, I::Error> {
+        self.0.next_back().map(|o| o.cloned())
     }
 }
 
