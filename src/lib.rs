@@ -88,7 +88,9 @@ pub trait FallibleIterator {
     /// This is useful to allow the use of iterator adaptors that would
     /// otherwise consume the value.
     #[inline]
-    fn by_ref(&mut self) -> &mut Self where Self: Sized {
+    fn by_ref(&mut self) -> &mut Self
+        where Self: Sized
+    {
         self
     }
 
@@ -117,7 +119,9 @@ pub trait FallibleIterator {
 
     /// Consumes the iterator, returning the number of remaining items.
     #[inline]
-    fn count(mut self) -> Result<usize, Self::Error> where Self: Sized {
+    fn count(mut self) -> Result<usize, Self::Error>
+        where Self: Sized
+    {
         let mut count = 0;
         while let Some(_) = try!(self.next()) {
             count += 1;
@@ -130,9 +134,9 @@ pub trait FallibleIterator {
     ///
     /// An `Err` will be returned if any invocation of `next` returns `Err`.
     #[inline]
-    fn collect<T>(self) -> Result<T, Self::Error> where
-        T: FromFallibleIterator<Self::Item>,
-        Self: Sized
+    fn collect<T>(self) -> Result<T, Self::Error>
+        where T: FromFallibleIterator<Self::Item>,
+              Self: Sized
     {
         T::from_fallible_iterator(self)
     }
@@ -140,11 +144,10 @@ pub trait FallibleIterator {
     /// Returns an iterator which yields the current iteration count as well
     /// as the value.
     #[inline]
-    fn enumerate(self) -> Enumerate<Self> where Self: Sized {
-        Enumerate {
-            it: self,
-            n: 0,
-        }
+    fn enumerate(self) -> Enumerate<Self>
+        where Self: Sized
+    {
+        Enumerate { it: self, n: 0 }
     }
 
     /// Returns an iterator which yields this iterator's elements and ends after
@@ -154,7 +157,9 @@ pub trait FallibleIterator {
     /// `Ok(None)` is normally unspecified. The iterator returned by this method
     /// guarantees that `Ok(None)` will always be returned.
     #[inline]
-    fn fuse(self) -> Fuse<Self> where Self: Sized {
+    fn fuse(self) -> Fuse<Self>
+        where Self: Sized
+    {
         Fuse {
             it: self,
             done: false,
@@ -163,7 +168,9 @@ pub trait FallibleIterator {
 
     /// Returns the last element of the iterator.
     #[inline]
-    fn last(mut self) -> Result<Option<Self::Item>, Self::Error> where Self: Sized {
+    fn last(mut self) -> Result<Option<Self::Item>, Self::Error>
+        where Self: Sized
+    {
         let mut last = None;
         while let Some(e) = try!(self.next()) {
             last = Some(e);
@@ -178,10 +185,7 @@ pub trait FallibleIterator {
         where F: FnMut(Self::Item) -> B,
               Self: Sized
     {
-        Map {
-            it: self,
-            f: f,
-        }
+        Map { it: self, f: f }
     }
 
     /// Returns the `n`th element of the iterator.
@@ -200,7 +204,9 @@ pub trait FallibleIterator {
     /// Returns an iterator that can peek at the next element without consuming
     /// it.
     #[inline]
-    fn peekable(self) -> Peekable<Self> where Self: Sized {
+    fn peekable(self) -> Peekable<Self>
+        where Self: Sized
+    {
         Peekable {
             it: self,
             next: None,
@@ -210,14 +216,18 @@ pub trait FallibleIterator {
     /// Returns an iterator that yields this iterator's items in the opposite
     /// order.
     #[inline]
-    fn rev(self) -> Rev<Self> where Self: Sized + DoubleEndedFallibleIterator {
+    fn rev(self) -> Rev<Self>
+        where Self: Sized + DoubleEndedFallibleIterator
+    {
         Rev(self)
     }
 
     /// Returns an iterator that yeilds only the first `n` values of this
     /// iterator.
     #[inline]
-    fn take(self, n: usize) -> Take<Self> where Self: Sized {
+    fn take(self, n: usize) -> Take<Self>
+        where Self: Sized
+    {
         Take {
             it: self,
             remaining: n,
@@ -509,7 +519,9 @@ impl<'a, T, I> DoubleEndedFallibleIterator for Cloned<I>
 
 /// Converts an `Iterator<Item = Result<T, E>>` into a `FailingIterator<Item = T, Error = E>`.
 #[inline]
-pub fn convert<T, E, I>(it: I) -> Convert<I> where I: Iterator<Item = Result<T, E>> {
+pub fn convert<T, E, I>(it: I) -> Convert<I>
+    where I: Iterator<Item = Result<T, E>>
+{
     Convert(it)
 }
 
@@ -544,7 +556,9 @@ pub struct Enumerate<I> {
     n: usize,
 }
 
-impl<I> FallibleIterator for Enumerate<I> where I: FallibleIterator {
+impl<I> FallibleIterator for Enumerate<I>
+    where I: FallibleIterator
+{
     type Item = (usize, I::Item);
     type Error = I::Error;
 
@@ -580,7 +594,9 @@ pub struct Fuse<I> {
     done: bool,
 }
 
-impl<I> FallibleIterator for Fuse<I> where I: FallibleIterator {
+impl<I> FallibleIterator for Fuse<I>
+    where I: FallibleIterator
+{
     type Item = I::Item;
     type Error = I::Error;
 
@@ -665,7 +681,9 @@ pub struct Peekable<I: FallibleIterator> {
     next: Option<I::Item>,
 }
 
-impl<I> Peekable<I> where I: FallibleIterator {
+impl<I> Peekable<I>
+    where I: FallibleIterator
+{
     /// Returns a reference to the next value without advancing the iterator.
     #[inline]
     pub fn peek(&mut self) -> Result<Option<&I::Item>, I::Error> {
@@ -677,7 +695,9 @@ impl<I> Peekable<I> where I: FallibleIterator {
     }
 }
 
-impl<I> FallibleIterator for Peekable<I> where I: FallibleIterator {
+impl<I> FallibleIterator for Peekable<I>
+    where I: FallibleIterator
+{
     type Item = I::Item;
     type Error = I::Error;
 
@@ -706,7 +726,9 @@ impl<I> FallibleIterator for Peekable<I> where I: FallibleIterator {
 #[derive(Debug)]
 pub struct Rev<I>(I);
 
-impl<I> FallibleIterator for Rev<I> where I: DoubleEndedFallibleIterator {
+impl<I> FallibleIterator for Rev<I>
+    where I: DoubleEndedFallibleIterator
+{
     type Item = I::Item;
     type Error = I::Error;
 
@@ -726,7 +748,9 @@ impl<I> FallibleIterator for Rev<I> where I: DoubleEndedFallibleIterator {
     }
 }
 
-impl<I> DoubleEndedFallibleIterator for Rev<I> where I: DoubleEndedFallibleIterator {
+impl<I> DoubleEndedFallibleIterator for Rev<I>
+    where I: DoubleEndedFallibleIterator
+{
     #[inline]
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
         self.0.next()
@@ -741,7 +765,9 @@ pub struct Take<I> {
     remaining: usize,
 }
 
-impl<I> FallibleIterator for Take<I> where I: FallibleIterator {
+impl<I> FallibleIterator for Take<I>
+    where I: FallibleIterator
+{
     type Item = I::Item;
     type Error = I::Error;
 
