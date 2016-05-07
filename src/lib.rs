@@ -45,6 +45,8 @@
 #![doc(html_root_url = "https://sfackler.github.io/rust-fallible-iterator/doc/v0.1.0")]
 
 use std::cmp;
+use std::collections::{HashMap, HashSet, BTreeMap, BTreeSet};
+use std::hash::Hash;
 
 /// An `Iterator`-like trait that allows for calculation of items to fail.
 pub trait FallibleIterator {
@@ -290,7 +292,7 @@ pub trait FromFallibleIterator<T>: Sized {
 
 impl<T> FromFallibleIterator<T> for Vec<T> {
     #[inline]
-    fn from_fallible_iterator<I>(mut it: I) -> Result<Self, I::Error>
+    fn from_fallible_iterator<I>(mut it: I) -> Result<Vec<T>, I::Error>
         where I: FallibleIterator<Item = T>
     {
         let mut vec = Vec::with_capacity(it.size_hint().0);
@@ -298,6 +300,66 @@ impl<T> FromFallibleIterator<T> for Vec<T> {
             vec.push(v);
         }
         Ok(vec)
+    }
+}
+
+impl<T> FromFallibleIterator<T> for HashSet<T>
+    where T: Hash + Eq
+{
+    #[inline]
+    fn from_fallible_iterator<I>(mut it: I) -> Result<HashSet<T>, I::Error>
+        where I: FallibleIterator<Item = T>
+    {
+        let mut set = HashSet::with_capacity(it.size_hint().0);
+        while let Some(v) = try!(it.next()) {
+            set.insert(v);
+        }
+        Ok(set)
+    }
+}
+
+impl<K, V> FromFallibleIterator<(K, V)> for HashMap<K, V>
+    where K: Hash + Eq
+{
+    #[inline]
+    fn from_fallible_iterator<I>(mut it: I) -> Result<HashMap<K, V>, I::Error>
+        where I: FallibleIterator<Item = (K, V)>
+    {
+        let mut map = HashMap::with_capacity(it.size_hint().0);
+        while let Some((k, v)) = try!(it.next()) {
+            map.insert(k, v);
+        }
+        Ok(map)
+    }
+}
+
+impl<T> FromFallibleIterator<T> for BTreeSet<T>
+    where T: Ord
+{
+    #[inline]
+    fn from_fallible_iterator<I>(mut it: I) -> Result<BTreeSet<T>, I::Error>
+        where I: FallibleIterator<Item = T>
+    {
+        let mut set = BTreeSet::new();
+        while let Some(v) = try!(it.next()) {
+            set.insert(v);
+        }
+        Ok(set)
+    }
+}
+
+impl<K, V> FromFallibleIterator<(K, V)> for BTreeMap<K, V>
+    where K: Ord
+{
+    #[inline]
+    fn from_fallible_iterator<I>(mut it: I) -> Result<BTreeMap<K, V>, I::Error>
+        where I: FallibleIterator<Item = (K, V)>
+    {
+        let mut map = BTreeMap::new();
+        while let Some((k, v)) = try!(it.next()) {
+            map.insert(k, v);
+        }
+        Ok(map)
     }
 }
 
