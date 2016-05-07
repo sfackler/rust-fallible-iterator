@@ -76,6 +76,7 @@ pub trait FallibleIterator {
     ///
     /// The default implementation returns `(0, None)`, which is correct for
     /// any iterator.
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (0, None)
     }
@@ -84,12 +85,14 @@ pub trait FallibleIterator {
     ///
     /// This is useful to allow the use of iterator adaptors that would
     /// otherwise consume the value.
+    #[inline]
     fn by_ref(&mut self) -> &mut Self where Self: Sized {
         self
     }
 
     /// Returns an iterator which yields the elements of this iterator followed
     /// by another.
+    #[inline]
     fn chain<I>(self, it: I) -> Chain<Self, I>
         where I: IntoFallibleIterator<Item = Self::Item, Error = Self::Error>,
               Self: Sized
@@ -102,6 +105,7 @@ pub trait FallibleIterator {
     }
 
     /// Returns an iterator which clones all of its elements.
+    #[inline]
     fn cloned<'a, T>(self) -> Cloned<Self>
         where Self: Sized + FallibleIterator<Item = &'a T>,
               T: 'a + Clone
@@ -110,6 +114,7 @@ pub trait FallibleIterator {
     }
 
     /// Consumes the iterator, returning the number of remaining items.
+    #[inline]
     fn count(mut self) -> Result<usize, Self::Error> where Self: Sized {
         let mut count = 0;
         while let Some(_) = try!(self.next()) {
@@ -122,6 +127,7 @@ pub trait FallibleIterator {
     /// Transforms the iterator into a collection.
     ///
     /// An `Err` will be returned if any invocation of `next` returns `Err`.
+    #[inline]
     fn collect<T>(self) -> Result<T, Self::Error> where
         T: FromFallibleIterator<Self::Item>,
         Self: Sized
@@ -131,6 +137,7 @@ pub trait FallibleIterator {
 
     /// Returns an iterator which yields the current iteration count as well
     /// as the value.
+    #[inline]
     fn enumerate(self) -> Enumerate<Self> where Self: Sized {
         Enumerate {
             it: self,
@@ -144,6 +151,7 @@ pub trait FallibleIterator {
     /// The behavior of calling `next` after it has previously returned
     /// `Ok(None)` is normally unspecified. The iterator returned by this method
     /// guarantees that `Ok(None)` will always be returned.
+    #[inline]
     fn fuse(self) -> Fuse<Self> where Self: Sized {
         Fuse {
             it: self,
@@ -152,6 +160,7 @@ pub trait FallibleIterator {
     }
 
     /// Returns the last element of the iterator.
+    #[inline]
     fn last(mut self) -> Result<Option<Self::Item>, Self::Error> where Self: Sized {
         let mut last = None;
         while let Some(e) = try!(self.next()) {
@@ -162,6 +171,7 @@ pub trait FallibleIterator {
 
     /// Returns an iterator which applies a transform to the elements of the
     /// underlying iterator.
+    #[inline]
     fn map<B, F>(self, f: F) -> Map<Self, F>
         where F: FnMut(Self::Item) -> B,
               Self: Sized
@@ -173,6 +183,7 @@ pub trait FallibleIterator {
     }
 
     /// Returns the `n`th element of the iterator.
+    #[inline]
     fn nth(&mut self, mut n: usize) -> Result<Option<Self::Item>, Self::Error> {
         let mut it = self.take(n);
         while let Some(e) = try!(it.next()) {
@@ -186,6 +197,7 @@ pub trait FallibleIterator {
 
     /// Returns an iterator that can peek at the next element without consuming
     /// it.
+    #[inline]
     fn peekable(self) -> Peekable<Self> where Self: Sized {
         Peekable {
             it: self,
@@ -195,12 +207,14 @@ pub trait FallibleIterator {
 
     /// Returns an iterator that yields this iterator's items in the opposite
     /// order.
+    #[inline]
     fn rev(self) -> Rev<Self> where Self: Sized + DoubleEndedFallibleIterator {
         Rev(self)
     }
 
     /// Returns an iterator that yeilds only the first `n` values of this
     /// iterator.
+    #[inline]
     fn take(self, n: usize) -> Take<Self> where Self: Sized {
         Take {
             it: self,
@@ -210,6 +224,7 @@ pub trait FallibleIterator {
 
     /// Returns an iterator that yields pairs of this iterator's and another
     /// iterator's values.
+    #[inline]
     fn zip<I>(self, o: I) -> Zip<Self, I::IntoIter>
         where Self: Sized,
               I: IntoFallibleIterator<Error = Self::Error>
@@ -222,16 +237,19 @@ impl<'a, I: FallibleIterator + ?Sized> FallibleIterator for &'a mut I {
     type Item = I::Item;
     type Error = I::Error;
 
+    #[inline]
     fn next(&mut self) -> Result<Option<I::Item>, I::Error> {
         (**self).next()
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (**self).size_hint()
     }
 }
 
 impl<'a, I: DoubleEndedFallibleIterator + ?Sized> DoubleEndedFallibleIterator for &'a mut I {
+    #[inline]
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
         (**self).next_back()
     }
@@ -241,16 +259,19 @@ impl<I: FallibleIterator + ?Sized> FallibleIterator for Box<I> {
     type Item = I::Item;
     type Error = I::Error;
 
+    #[inline]
     fn next(&mut self) -> Result<Option<I::Item>, I::Error> {
         (**self).next()
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (**self).size_hint()
     }
 }
 
 impl<I: DoubleEndedFallibleIterator + ?Sized> DoubleEndedFallibleIterator for Box<I> {
+    #[inline]
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
         (**self).next_back()
     }
@@ -268,6 +289,7 @@ pub trait FromFallibleIterator<T>: Sized {
 }
 
 impl<T> FromFallibleIterator<T> for Vec<T> {
+    #[inline]
     fn from_fallible_iterator<I>(mut it: I) -> Result<Self, I::Error>
         where I: FallibleIterator<Item = T>
     {
@@ -295,6 +317,7 @@ impl<I> IntoFallibleIterator for I
     type Error = I::Error;
     type IntoIter = I;
 
+    #[inline]
     fn into_fallible_iterator(self) -> I {
         self
     }
@@ -322,6 +345,7 @@ impl<T, U> FallibleIterator for Chain<T, U>
     type Item = T::Item;
     type Error = T::Error;
 
+    #[inline]
     fn next(&mut self) -> Result<Option<T::Item>, T::Error> {
         match self.state {
             ChainState::Both => {
@@ -338,6 +362,7 @@ impl<T, U> FallibleIterator for Chain<T, U>
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let front_hint = self.front.size_hint();
         let back_hint = self.back.size_hint();
@@ -351,6 +376,7 @@ impl<T, U> FallibleIterator for Chain<T, U>
         (low, high)
     }
 
+    #[inline]
     fn count(self) -> Result<usize, T::Error> {
         match self.state {
             ChainState::Both => Ok(try!(self.front.count()) + try!(self.back.count())),
@@ -364,6 +390,7 @@ impl<T, U> DoubleEndedFallibleIterator for Chain<T, U>
     where T: DoubleEndedFallibleIterator,
           U: DoubleEndedFallibleIterator<Item = T::Item, Error = T::Error>
 {
+    #[inline]
     fn next_back(&mut self) -> Result<Option<T::Item>, T::Error> {
         match self.state {
             ChainState::Both => {
@@ -392,14 +419,17 @@ impl<'a, T, I> FallibleIterator for Cloned<I>
     type Item = T;
     type Error = I::Error;
 
+    #[inline]
     fn next(&mut self) -> Result<Option<T>, I::Error> {
         self.0.next().map(|o| o.cloned())
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.0.size_hint()
     }
 
+    #[inline]
     fn count(self) -> Result<usize, I::Error> {
         self.0.count()
     }
@@ -409,12 +439,14 @@ impl<'a, T, I> DoubleEndedFallibleIterator for Cloned<I>
     where I: DoubleEndedFallibleIterator<Item = &'a T>,
           T: 'a + Clone
 {
+    #[inline]
     fn next_back(&mut self) -> Result<Option<T>, I::Error> {
         self.0.next_back().map(|o| o.cloned())
     }
 }
 
 /// Converts an `Iterator<Item = Result<T, E>>` into a `FailingIterator<Item = T, Error = E>`.
+#[inline]
 pub fn convert<T, E, I>(it: I) -> Convert<I> where I: Iterator<Item = Result<T, E>> {
     Convert(it)
 }
@@ -427,6 +459,7 @@ impl<T, E, I: Iterator<Item = Result<T, E>>> FallibleIterator for Convert<I> {
     type Item = T;
     type Error = E;
 
+    #[inline]
     fn next(&mut self) -> Result<Option<T>, E> {
         match self.0.next() {
             Some(Ok(i)) => Ok(Some(i)),
@@ -435,6 +468,7 @@ impl<T, E, I: Iterator<Item = Result<T, E>>> FallibleIterator for Convert<I> {
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.0.size_hint()
     }
@@ -452,6 +486,7 @@ impl<I> FallibleIterator for Enumerate<I> where I: FallibleIterator {
     type Item = (usize, I::Item);
     type Error = I::Error;
 
+    #[inline]
     fn next(&mut self) -> Result<Option<(usize, I::Item)>, I::Error> {
         self.it
             .next()
@@ -464,10 +499,12 @@ impl<I> FallibleIterator for Enumerate<I> where I: FallibleIterator {
             })
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.it.size_hint()
     }
 
+    #[inline]
     fn count(self) -> Result<usize, I::Error> {
         self.it.count()
     }
@@ -485,6 +522,7 @@ impl<I> FallibleIterator for Fuse<I> where I: FallibleIterator {
     type Item = I::Item;
     type Error = I::Error;
 
+    #[inline]
     fn next(&mut self) -> Result<Option<I::Item>, I::Error> {
         if self.done {
             return Ok(None);
@@ -500,12 +538,14 @@ impl<I> FallibleIterator for Fuse<I> where I: FallibleIterator {
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.it.size_hint()
     }
 }
 
 impl<T, E, I: DoubleEndedIterator<Item = Result<T, E>>> DoubleEndedFallibleIterator for Convert<I> {
+    #[inline]
     fn next_back(&mut self) -> Result<Option<T>, E> {
         match self.0.next_back() {
             Some(Ok(i)) => Ok(Some(i)),
@@ -530,14 +570,17 @@ impl<B, F, I> FallibleIterator for Map<I, F>
     type Item = B;
     type Error = I::Error;
 
+    #[inline]
     fn next(&mut self) -> Result<Option<B>, I::Error> {
         self.it.next().map(|o| o.map(|i| (self.f)(i)))
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.it.size_hint()
     }
 
+    #[inline]
     fn count(self) -> Result<usize, I::Error> {
         self.it.count()
     }
@@ -547,6 +590,7 @@ impl<B, F, I> DoubleEndedFallibleIterator for Map<I, F>
     where I: DoubleEndedFallibleIterator,
           F: FnMut(I::Item) -> B
 {
+    #[inline]
     fn next_back(&mut self) -> Result<Option<B>, I::Error> {
         self.it.next_back().map(|o| o.map(|i| (self.f)(i)))
     }
@@ -561,6 +605,7 @@ pub struct Peekable<I: FallibleIterator> {
 
 impl<I> Peekable<I> where I: FallibleIterator {
     /// Returns a reference to the next value without advancing the iterator.
+    #[inline]
     pub fn peek(&mut self) -> Result<Option<&I::Item>, I::Error> {
         if self.next.is_none() {
             self.next = try!(self.it.next());
@@ -574,6 +619,7 @@ impl<I> FallibleIterator for Peekable<I> where I: FallibleIterator {
     type Item = I::Item;
     type Error = I::Error;
 
+    #[inline]
     fn next(&mut self) -> Result<Option<I::Item>, I::Error> {
         if let Some(next) = self.next.take() {
             return Ok(Some(next));
@@ -582,6 +628,7 @@ impl<I> FallibleIterator for Peekable<I> where I: FallibleIterator {
         self.it.next()
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let mut hint = self.it.size_hint();
         if self.next.is_some() {
@@ -601,20 +648,24 @@ impl<I> FallibleIterator for Rev<I> where I: DoubleEndedFallibleIterator {
     type Item = I::Item;
     type Error = I::Error;
 
+    #[inline]
     fn next(&mut self) -> Result<Option<I::Item>, I::Error> {
         self.0.next_back()
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.0.size_hint()
     }
 
+    #[inline]
     fn count(self) -> Result<usize, I::Error> {
         self.0.count()
     }
 }
 
 impl<I> DoubleEndedFallibleIterator for Rev<I> where I: DoubleEndedFallibleIterator {
+    #[inline]
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
         self.0.next()
     }
@@ -632,6 +683,7 @@ impl<I> FallibleIterator for Take<I> where I: FallibleIterator {
     type Item = I::Item;
     type Error = I::Error;
 
+    #[inline]
     fn next(&mut self) -> Result<Option<I::Item>, I::Error> {
         if self.remaining == 0 {
             return Ok(None);
@@ -644,6 +696,7 @@ impl<I> FallibleIterator for Take<I> where I: FallibleIterator {
         next
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let hint = self.it.size_hint();
         (cmp::min(hint.0, self.remaining), hint.1.map(|n| cmp::min(n, self.remaining)))
@@ -662,6 +715,7 @@ impl<T, U> FallibleIterator for Zip<T, U>
     type Item = (T::Item, U::Item);
     type Error = T::Error;
 
+    #[inline]
     fn next(&mut self) -> Result<Option<(T::Item, U::Item)>, T::Error> {
         match (try!(self.0.next()), try!(self.1.next())) {
             (Some(a), Some(b)) => Ok(Some((a, b))),
@@ -669,6 +723,7 @@ impl<T, U> FallibleIterator for Zip<T, U>
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let a = self.0.size_hint();
         let b = self.1.size_hint();
