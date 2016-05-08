@@ -654,6 +654,15 @@ impl<I> FallibleIterator for Fuse<I>
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.it.size_hint()
     }
+
+    #[inline]
+    fn count(self) -> Result<usize, I::Error> {
+        if self.done {
+            Ok(0)
+        } else {
+            self.it.count()
+        }
+    }
 }
 
 /// A normal (non-fallible) iterator which wraps a fallible iterator.
