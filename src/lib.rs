@@ -559,6 +559,19 @@ impl<T, E, I> FallibleIterator for Convert<I>
     }
 }
 
+impl<T, E, I> DoubleEndedFallibleIterator for Convert<I>
+    where I: DoubleEndedIterator<Item = Result<T, E>>
+{
+    #[inline]
+    fn next_back(&mut self) -> Result<Option<T>, E> {
+        match self.0.next_back() {
+            Some(Ok(i)) => Ok(Some(i)),
+            Some(Err(e)) => Err(e),
+            None => Ok(None),
+        }
+    }
+}
+
 /// An iterator that yields the iteration count as well as the values of the
 /// underlying iterator.
 #[derive(Debug)]
@@ -630,19 +643,6 @@ impl<I> FallibleIterator for Fuse<I>
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.it.size_hint()
-    }
-}
-
-impl<T, E, I> DoubleEndedFallibleIterator for Convert<I>
-    where I: DoubleEndedIterator<Item = Result<T, E>>
-{
-    #[inline]
-    fn next_back(&mut self) -> Result<Option<T>, E> {
-        match self.0.next_back() {
-            Some(Ok(i)) => Ok(Some(i)),
-            Some(Err(e)) => Err(e),
-            None => Ok(None),
-        }
     }
 }
 
