@@ -46,6 +46,7 @@
 
 use std::cmp;
 use std::collections::{HashMap, HashSet, BTreeMap, BTreeSet};
+use std::iter;
 use std::hash::Hash;
 
 /// An `Iterator`-like trait that allows for calculation of items to fail.
@@ -164,6 +165,14 @@ pub trait FallibleIterator {
             it: self,
             done: false,
         }
+    }
+
+    /// Returns a normal (non-fallible) iterator over `Result<Item, Error>`.
+    #[inline]
+    fn iterator(self) -> Iterator<Self>
+        where Self: Sized
+    {
+        Iterator(self)
     }
 
     /// Returns the last element of the iterator.
@@ -520,7 +529,7 @@ impl<'a, T, I> DoubleEndedFallibleIterator for Cloned<I>
 /// Converts an `Iterator<Item = Result<T, E>>` into a `FailingIterator<Item = T, Error = E>`.
 #[inline]
 pub fn convert<T, E, I>(it: I) -> Convert<I>
-    where I: Iterator<Item = Result<T, E>>
+    where I: iter::Iterator<Item = Result<T, E>>
 {
     Convert(it)
 }
@@ -529,7 +538,9 @@ pub fn convert<T, E, I>(it: I) -> Convert<I>
 #[derive(Debug)]
 pub struct Convert<I>(I);
 
-impl<T, E, I: Iterator<Item = Result<T, E>>> FallibleIterator for Convert<I> {
+impl<T, E, I> FallibleIterator for Convert<I>
+    where I: iter::Iterator<Item = Result<T, E>>
+{
     type Item = T;
     type Error = E;
 
@@ -622,13 +633,52 @@ impl<I> FallibleIterator for Fuse<I>
     }
 }
 
-impl<T, E, I: DoubleEndedIterator<Item = Result<T, E>>> DoubleEndedFallibleIterator for Convert<I> {
+impl<T, E, I> DoubleEndedFallibleIterator for Convert<I>
+    where I: DoubleEndedIterator<Item = Result<T, E>>
+{
     #[inline]
     fn next_back(&mut self) -> Result<Option<T>, E> {
         match self.0.next_back() {
             Some(Ok(i)) => Ok(Some(i)),
             Some(Err(e)) => Err(e),
             None => Ok(None),
+        }
+    }
+}
+
+/// A normal (non-fallible) iterator which wraps a fallible iterator.
+#[derive(Debug)]
+pub struct Iterator<I>(I);
+
+impl<I> iter::Iterator for Iterator<I>
+    where I: FallibleIterator
+{
+    type Item = Result<I::Item, I::Error>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Result<I::Item, I::Error>> {
+        match self.0.next() {
+            Ok(Some(v)) => Some(Ok(v)),
+            Ok(None) => None,
+            Err(e) => Some(Err(e)),
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl<I> DoubleEndedIterator for Iterator<I>
+    where I: DoubleEndedFallibleIterator
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<Result<I::Item, I::Error>> {
+        match self.0.next_back() {
+            Ok(Some(v)) => Some(Ok(v)),
+            Ok(None) => None,
+            Err(e) => Some(Err(e)),
         }
     }
 }
