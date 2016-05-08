@@ -197,6 +197,16 @@ pub trait FallibleIterator {
         Map { it: self, f: f }
     }
 
+    /// Returns an iterator which applies a transform to the errors of the
+    /// underlying iterator.
+    #[inline]
+    fn map_err<B, F>(self, f: F) -> MapErr<Self, F>
+        where F: FnMut(Self::Error) -> B,
+              Self: Sized
+    {
+        MapErr { it: self, f: f }
+    }
+
     /// Returns the `n`th element of the iterator.
     #[inline]
     fn nth(&mut self, mut n: usize) -> Result<Option<Self::Item>, Self::Error> {
@@ -700,7 +710,7 @@ impl<B, F, I> FallibleIterator for Map<I, F>
 
     #[inline]
     fn next(&mut self) -> Result<Option<B>, I::Error> {
-        self.it.next().map(|o| o.map(|i| (self.f)(i)))
+        self.it.next().map(|o| o.map(&mut self.f))
     }
 
     #[inline]
@@ -720,7 +730,48 @@ impl<B, F, I> DoubleEndedFallibleIterator for Map<I, F>
 {
     #[inline]
     fn next_back(&mut self) -> Result<Option<B>, I::Error> {
-        self.it.next_back().map(|o| o.map(|i| (self.f)(i)))
+        self.it.next_back().map(|o| o.map(&mut self.f))
+    }
+}
+
+/// An iterator which applies a transform to the errors of the underlying
+/// iterator.
+#[derive(Debug)]
+pub struct MapErr<I, F> {
+    it: I,
+    f: F,
+}
+
+impl<B, F, I> FallibleIterator for MapErr<I, F>
+    where I: FallibleIterator,
+          F: FnMut(I::Error) -> B
+{
+    type Item = I::Item;
+    type Error = B;
+
+    #[inline]
+    fn next(&mut self) -> Result<Option<I::Item>, B> {
+        self.it.next().map_err(&mut self.f)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.it.size_hint()
+    }
+
+    #[inline]
+    fn count(mut self) -> Result<usize, B> {
+        self.it.count().map_err(&mut self.f)
+    }
+}
+
+impl<B, F, I> DoubleEndedFallibleIterator for MapErr<I, F>
+    where I: DoubleEndedFallibleIterator,
+          F: FnMut(I::Error) -> B
+{
+    #[inline]
+    fn next_back(&mut self) -> Result<Option<I::Item>, B> {
+        self.it.next_back().map_err(&mut self.f)
     }
 }
 
