@@ -148,31 +148,6 @@ pub trait FallibleIterator {
         Cloned(self)
     }
 
-    /// Lexicographically compares the elements of this iterator to that of
-    /// another.
-    #[inline]
-    fn cmp<I>(mut self, other: I) -> Result<Ordering, Self::Error>
-        where Self: Sized,
-              I: IntoFallibleIterator<Item = Self::Item, Error = Self::Error>,
-              Self::Item: Ord
-    {
-        let mut other = other.into_fallible_iterator();
-
-        loop {
-            match (try!(self.next()), try!(other.next())) {
-                (None, None) => return Ok(Ordering::Equal),
-                (None, _) => return Ok(Ordering::Less),
-                (_, None) => return Ok(Ordering::Greater),
-                (Some(x), Some(y)) => {
-                    match x.cmp(&y) {
-                        Ordering::Equal => {}
-                        o => return Ok(o),
-                    }
-                }
-            }
-        }
-    }
-
     /// Consumes the iterator, returning the number of remaining items.
     #[inline]
     fn count(mut self) -> Result<usize, Self::Error>
@@ -395,31 +370,6 @@ pub trait FallibleIterator {
         Ok(None)
     }
 
-    /// Lexicographically compares the elements of this iterator to that of
-    /// another.
-    #[inline]
-    fn partial_cmp<I>(mut self, other: I) -> Result<Option<Ordering>, Self::Error>
-        where Self: Sized,
-              I: IntoFallibleIterator<Item = Self::Item, Error = Self::Error>,
-              Self::Item: PartialOrd
-    {
-        let mut other = other.into_fallible_iterator();
-
-        loop {
-            match (try!(self.next()), try!(other.next())) {
-                (None, None) => return Ok(Some(Ordering::Equal)),
-                (None, _) => return Ok(Some(Ordering::Less)),
-                (_, None) => return Ok(Some(Ordering::Greater)),
-                (Some(x), Some(y)) => {
-                    match x.partial_cmp(&y) {
-                        Some(Ordering::Equal) => {}
-                        o => return Ok(o),
-                    }
-                }
-            }
-        }
-    }
-
     /// Returns an iterator that can peek at the next element without consuming
     /// it.
     #[inline]
@@ -478,6 +428,56 @@ pub trait FallibleIterator {
               I: IntoFallibleIterator<Error = Self::Error>
     {
         Zip(self, o.into_fallible_iterator())
+    }
+
+    /// Lexicographically compares the elements of this iterator to that of
+    /// another.
+    #[inline]
+    fn cmp<I>(mut self, other: I) -> Result<Ordering, Self::Error>
+        where Self: Sized,
+              I: IntoFallibleIterator<Item = Self::Item, Error = Self::Error>,
+              Self::Item: Ord
+    {
+        let mut other = other.into_fallible_iterator();
+
+        loop {
+            match (try!(self.next()), try!(other.next())) {
+                (None, None) => return Ok(Ordering::Equal),
+                (None, _) => return Ok(Ordering::Less),
+                (_, None) => return Ok(Ordering::Greater),
+                (Some(x), Some(y)) => {
+                    match x.cmp(&y) {
+                        Ordering::Equal => {}
+                        o => return Ok(o),
+                    }
+                }
+            }
+        }
+    }
+
+    /// Lexicographically compares the elements of this iterator to that of
+    /// another.
+    #[inline]
+    fn partial_cmp<I>(mut self, other: I) -> Result<Option<Ordering>, Self::Error>
+        where Self: Sized,
+              I: IntoFallibleIterator<Item = Self::Item, Error = Self::Error>,
+              Self::Item: PartialOrd
+    {
+        let mut other = other.into_fallible_iterator();
+
+        loop {
+            match (try!(self.next()), try!(other.next())) {
+                (None, None) => return Ok(Some(Ordering::Equal)),
+                (None, _) => return Ok(Some(Ordering::Less)),
+                (_, None) => return Ok(Some(Ordering::Greater)),
+                (Some(x), Some(y)) => {
+                    match x.partial_cmp(&y) {
+                        Some(Ordering::Equal) => {}
+                        o => return Ok(o),
+                    }
+                }
+            }
+        }
     }
 }
 
