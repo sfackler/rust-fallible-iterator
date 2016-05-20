@@ -151,6 +151,19 @@ pub trait FallibleIterator {
         Enumerate { it: self, n: 0 }
     }
 
+    /// Returns an iterator which uses a predicate to determine which values
+    /// should be yielded.
+    #[inline]
+    fn filter<F>(self, f: F) -> Filter<Self, F>
+        where Self: Sized,
+              F: FnMut(&Self::Item) -> bool
+    {
+        Filter {
+            it: self,
+            f: f,
+        }
+    }
+
     /// Returns an iterator which yields this iterator's elements and ends after
     /// the frist `Ok(None)`.
     ///
@@ -617,6 +630,54 @@ impl<I> FallibleIterator for Enumerate<I>
     #[inline]
     fn count(self) -> Result<usize, I::Error> {
         self.it.count()
+    }
+}
+
+/// An iterator which uses a predicate to determine which values of the
+/// underlying iterator should be yielded.
+#[derive(Debug)]
+pub struct Filter<I, F> {
+    it: I,
+    f: F,
+}
+
+impl<I, F> FallibleIterator for Filter<I, F>
+    where I: FallibleIterator,
+          F: FnMut(&I::Item) -> bool,
+{
+    type Item = I::Item;
+    type Error = I::Error;
+
+    #[inline]
+    fn next(&mut self) -> Result<Option<I::Item>, I::Error> {
+        while let Some(v) = try!(self.it.next()) {
+           if (self.f)(&v) {
+               return Ok(Some(v));
+           }
+        }
+
+        Ok(None)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, self.it.size_hint().1)
+    }
+}
+
+impl<I, F> DoubleEndedFallibleIterator for Filter<I, F>
+    where I: DoubleEndedFallibleIterator,
+          F: FnMut(&I::Item) -> bool
+{
+    #[inline]
+    fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
+        while let Some(v) = try!(self.it.next_back()) {
+           if (self.f)(&v) {
+               return Ok(Some(v));
+           }
+        }
+
+        Ok(None)
     }
 }
 
