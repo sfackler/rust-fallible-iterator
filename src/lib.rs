@@ -460,8 +460,8 @@ pub trait FallibleIterator {
     #[inline]
     fn partial_cmp<I>(mut self, other: I) -> Result<Option<Ordering>, Self::Error>
         where Self: Sized,
-              I: IntoFallibleIterator<Item = Self::Item, Error = Self::Error>,
-              Self::Item: PartialOrd
+              I: IntoFallibleIterator<Error = Self::Error>,
+              Self::Item: PartialOrd<I::Item>
     {
         let mut other = other.into_fallible_iterator();
 
@@ -520,6 +520,33 @@ pub trait FallibleIterator {
                 (Some(x), Some(y)) => {
                     if x != y {
                         return Ok(true);
+                    }
+                }
+            }
+        }
+    }
+
+    /// Determines if the elements of this iterator are lexicographically less
+    /// than those of another.
+    #[inline]
+    fn lt<I>(mut self, other: I) -> Result<bool, Self::Error>
+        where Self: Sized,
+              I: IntoFallibleIterator<Error = Self::Error>,
+              Self::Item: PartialOrd<I::Item>
+    {
+        let mut other = other.into_fallible_iterator();
+
+        loop {
+            match (try!(self.next()), try!(other.next())) {
+                (None, None) => return Ok(false),
+                (None, _) => return Ok(true),
+                (_, None) => return Ok(false),
+                (Some(x), Some(y)) => {
+                    match x.partial_cmp(&y) {
+                        Some(Ordering::Less) => return Ok(true),
+                        Some(Ordering::Equal) => {}
+                        Some(Ordering::Greater) => return Ok(false),
+                        None => return Ok(false),
                     }
                 }
             }
