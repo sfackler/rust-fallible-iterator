@@ -1,11 +1,11 @@
 [package]
 name = "fallible-iterator"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Steven Fackler <sfackler@gmail.com>"]
 license = "MIT/Apache-2.0"
 description = "Fallible iterator traits"
 repository = "https://github.com/sfackler/rust-fallible-iterator"
-documentation = "https://sfackler.github.io/rust-fallible-iterator/doc/v0.1.0/fallible_iterator"
+documentation = "https://sfackler.github.io/rust-fallible-iterator/doc/v0.1.1/fallible_iterator"
 readme = "README.md"
 
 [dependencies]
