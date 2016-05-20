@@ -206,6 +206,21 @@ pub trait FallibleIterator {
         }
     }
 
+    /// Returns the first element of the iterator that matches a predicate.
+    #[inline]
+    fn find<F>(&mut self, mut f: F) -> Result<Option<Self::Item>, Self::Error>
+        where Self: Sized,
+              F: FnMut(&Self::Item) -> bool
+    {
+        while let Some(v) = try!(self.next()) {
+            if f(&v) {
+                return Ok(Some(v));
+            }
+        }
+
+        Ok(None)
+    }
+
     /// Returns an iterator which yields this iterator's elements and ends after
     /// the frist `Ok(None)`.
     ///
