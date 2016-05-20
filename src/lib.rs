@@ -306,19 +306,55 @@ pub trait FallibleIterator {
         Ok(max)
     }
 
+    /// Returns the element of the iterator which gives the maximum value from
+    /// the function.
+    #[inline]
+    fn max_by_key<B, F>(mut self, mut f: F) -> Result<Option<Self::Item>, Self::Error>
+        where Self: Sized,
+              B: Ord,
+              F: FnMut(&Self::Item) -> B
+    {
+        let mut max = None;
+        while let Some(v) = try!(self.next()) {
+            let b = f(&v);
+            if max.as_ref().map(|&(_, ref m)| m < &b).unwrap_or(true) {
+                max = Some((v, b));
+            }
+        }
+        Ok(max.map(|(v, _)| v))
+    }
+
     /// Returns the minimal element of the iterator.
     #[inline]
-    fn max(mut self) -> Result<Option<Self::Item>, Self::Error>
+    fn min(mut self) -> Result<Option<Self::Item>, Self::Error>
         where Self: Sized,
               Self::Item: Ord
     {
-        let mut min= None;
+        let mut min = None;
         while let Some(v) = try!(self.next()) {
             if min.as_ref().map(|m| m > &v).unwrap_or(true) {
                 min = Some(v);
             }
         }
         Ok(min)
+    }
+
+    /// Returns the element of the iterator which gives the minimum value from
+    /// the function.
+    #[inline]
+    fn min_by_key<B, F>(mut self, mut f: F) -> Result<Option<Self::Item>, Self::Error>
+        where Self: Sized,
+              B: Ord,
+              F: FnMut(&Self::Item) -> B
+    {
+        let mut min = None;
+        while let Some(v) = try!(self.next()) {
+            let b = f(&v);
+            if min.as_ref().map(|&(_, ref m)| m > &b).unwrap_or(true) {
+                min = Some((v, b));
+            }
+        }
+        Ok(min.map(|(v, _)| v))
     }
 
     /// Returns the `n`th element of the iterator.
