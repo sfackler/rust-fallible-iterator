@@ -316,6 +316,23 @@ pub trait FallibleIterator {
         }
     }
 
+    /// Returns the position of the first element of this iterator that matches
+    /// a predicate.
+    #[inline]
+    fn position<F>(&mut self, mut f: F) -> Result<Option<usize>, Self::Error>
+        where Self: Sized,
+              F: FnMut(Self::Item) -> bool
+    {
+        let mut i = 0;
+        while let Some(v) = try!(self.next()) {
+            if f(v) {
+                return Ok(Some(i));
+            }
+            i += 1;
+        }
+        Ok(None)
+    }
+
     /// Returns an iterator that yields this iterator's items in the opposite
     /// order.
     #[inline]
