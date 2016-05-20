@@ -84,6 +84,34 @@ pub trait FallibleIterator {
         (0, None)
     }
 
+    /// Determines if all elements of this iterator matches a predicate.
+    #[inline]
+    fn all<F>(&mut self, mut f: F) -> Result<bool, Self::Error>
+        where F: FnMut(Self::Item) -> bool
+    {
+        while let Some(v) = try!(self.next()) {
+            if !f(v) {
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
+    }
+
+    /// Determines if any element of this iterator matches a predicate.
+    #[inline]
+    fn any<F>(&mut self, mut f: F) -> Result<bool, Self::Error>
+        where F: FnMut(Self::Item) -> bool
+    {
+        while let Some(v) = try!(self.next()) {
+            if f(v) {
+                return Ok(true);
+            }
+        }
+
+        Ok(false)
+    }
+
     /// Borrow an iterator rather than consuming it.
     ///
     /// This is useful to allow the use of iterator adaptors that would
