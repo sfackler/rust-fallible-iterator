@@ -222,6 +222,20 @@ pub trait FallibleIterator {
         }
     }
 
+    /// Applies a function over the elements of the iterator, producing a single
+    /// final value.
+    #[inline]
+    fn fold<B, F>(mut self, mut init: B, mut f: F) -> Result<B, Self::Error>
+        where Self: Sized,
+              F: FnMut(B, Self::Item) -> B
+    {
+        while let Some(v) = try!(self.next()) {
+            init = f(init, v);
+        }
+
+        Ok(init)
+    }
+
     /// Returns a normal (non-fallible) iterator over `Result<Item, Error>`.
     #[inline]
     fn iterator(self) -> Iterator<Self>
