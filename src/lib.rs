@@ -291,6 +291,36 @@ pub trait FallibleIterator {
         MapErr { it: self, f: f }
     }
 
+    /// Returns the maximal element of the iterator.
+    #[inline]
+    fn max(mut self) -> Result<Option<Self::Item>, Self::Error>
+        where Self: Sized,
+              Self::Item: Ord
+    {
+        let mut max = None;
+        while let Some(v) = try!(self.next()) {
+            if max.as_ref().map(|m| m < &v).unwrap_or(true) {
+                max = Some(v);
+            }
+        }
+        Ok(max)
+    }
+
+    /// Returns the minimal element of the iterator.
+    #[inline]
+    fn max(mut self) -> Result<Option<Self::Item>, Self::Error>
+        where Self: Sized,
+              Self::Item: Ord
+    {
+        let mut min= None;
+        while let Some(v) = try!(self.next()) {
+            if min.as_ref().map(|m| m > &v).unwrap_or(true) {
+                min = Some(v);
+            }
+        }
+        Ok(min)
+    }
+
     /// Returns the `n`th element of the iterator.
     #[inline]
     fn nth(&mut self, mut n: usize) -> Result<Option<Self::Item>, Self::Error> {
