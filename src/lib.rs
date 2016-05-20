@@ -552,6 +552,33 @@ pub trait FallibleIterator {
             }
         }
     }
+
+    /// Determines if the elements of this iterator are lexicographically less
+    /// than or equal to those of another.
+    #[inline]
+    fn le<I>(mut self, other: I) -> Result<bool, Self::Error>
+        where Self: Sized,
+              I: IntoFallibleIterator<Error = Self::Error>,
+              Self::Item: PartialOrd<I::Item>
+    {
+        let mut other = other.into_fallible_iterator();
+
+        loop {
+            match (try!(self.next()), try!(other.next())) {
+                (None, None) => return Ok(true),
+                (None, _) => return Ok(true),
+                (_, None) => return Ok(false),
+                (Some(x), Some(y)) => {
+                    match x.partial_cmp(&y) {
+                        Some(Ordering::Less) => return Ok(true),
+                        Some(Ordering::Equal) => {}
+                        Some(Ordering::Greater) => return Ok(false),
+                        None => return Ok(false),
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl<'a, I: FallibleIterator + ?Sized> FallibleIterator for &'a mut I {
