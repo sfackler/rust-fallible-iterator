@@ -297,13 +297,18 @@ pub trait FallibleIterator {
         where Self: Sized,
               Self::Item: Ord
     {
-        let mut max = None;
+        let mut max = match try!(self.next()) {
+            Some(v) => v,
+            None => return Ok(None),
+        };
+
         while let Some(v) = try!(self.next()) {
-            if max.as_ref().map(|m| m < &v).unwrap_or(true) {
-                max = Some(v);
+            if max < v {
+                max = v;
             }
         }
-        Ok(max)
+
+        Ok(Some(max))
     }
 
     /// Returns the element of the iterator which gives the maximum value from
@@ -314,14 +319,22 @@ pub trait FallibleIterator {
               B: Ord,
               F: FnMut(&Self::Item) -> B
     {
-        let mut max = None;
+        let mut max = match try!(self.next()) {
+            Some(v) => {
+                let b = f(&v);
+                (v, b)
+            }
+            None => return Ok(None),
+        };
+
         while let Some(v) = try!(self.next()) {
             let b = f(&v);
-            if max.as_ref().map(|&(_, ref m)| m < &b).unwrap_or(true) {
-                max = Some((v, b));
+            if max.1 < b {
+                max = (v, b);
             }
         }
-        Ok(max.map(|(v, _)| v))
+
+        Ok(Some(max.0))
     }
 
     /// Returns the minimal element of the iterator.
@@ -330,13 +343,18 @@ pub trait FallibleIterator {
         where Self: Sized,
               Self::Item: Ord
     {
-        let mut min = None;
+        let mut min = match try!(self.next()) {
+            Some(v) => v,
+            None => return Ok(None),
+        };
+
         while let Some(v) = try!(self.next()) {
-            if min.as_ref().map(|m| m > &v).unwrap_or(true) {
-                min = Some(v);
+            if min > v {
+                min = v;
             }
         }
-        Ok(min)
+
+        Ok(Some(min))
     }
 
     /// Returns the element of the iterator which gives the minimum value from
@@ -347,14 +365,22 @@ pub trait FallibleIterator {
               B: Ord,
               F: FnMut(&Self::Item) -> B
     {
-        let mut min = None;
+        let mut min = match try!(self.next()) {
+            Some(v) => {
+                let b = f(&v);
+                (v, b)
+            }
+            None => return Ok(None),
+        };
+
         while let Some(v) = try!(self.next()) {
             let b = f(&v);
-            if min.as_ref().map(|&(_, ref m)| m > &b).unwrap_or(true) {
-                min = Some((v, b));
+            if min.1 > b {
+                min = (v, b);
             }
         }
-        Ok(min.map(|(v, _)| v))
+
+        Ok(Some(min.0))
     }
 
     /// Returns the `n`th element of the iterator.
