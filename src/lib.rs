@@ -44,7 +44,7 @@
 //! ```
 #![doc(html_root_url = "https://sfackler.github.io/rust-fallible-iterator/doc/v0.1.0")]
 
-use std::cmp;
+use std::cmp::{self, Ordering};
 use std::collections::{HashMap, HashSet, BTreeMap, BTreeSet};
 use std::iter;
 use std::hash::Hash;
@@ -146,6 +146,31 @@ pub trait FallibleIterator {
               T: 'a + Clone
     {
         Cloned(self)
+    }
+
+    /// Lexicographically compares the elements of this iterator to that of
+    /// another.
+    #[inline]
+    fn cmp<I>(mut self, other: I) -> Result<Ordering, Self::Error>
+        where Self: Sized,
+              I: IntoFallibleIterator<Item = Self::Item, Error = Self::Error>,
+              Self::Item: Ord
+    {
+        let mut other = other.into_fallible_iterator();
+
+        loop {
+            match (try!(self.next()), try!(other.next())) {
+                (None, None) => return Ok(Ordering::Equal),
+                (None, _) => return Ok(Ordering::Less),
+                (_, None) => return Ok(Ordering::Greater),
+                (Some(x), Some(y)) => {
+                    match x.cmp(&y) {
+                        Ordering::Equal => {}
+                        o => return Ok(o),
+                    }
+                }
+            }
+        }
     }
 
     /// Consumes the iterator, returning the number of remaining items.
