@@ -164,6 +164,18 @@ pub trait FallibleIterator {
         }
     }
 
+    /// Returns an iterator which both filters and maps.
+    #[inline]
+    fn filter_map<B, F>(self, f: F) -> FilterMap<Self, F>
+        where Self: Sized,
+              F: FnMut(Self::Item) -> Option<B>
+    {
+        FilterMap {
+            it: self,
+            f: f,
+        }
+    }
+
     /// Returns an iterator which yields this iterator's elements and ends after
     /// the frist `Ok(None)`.
     ///
@@ -673,6 +685,54 @@ impl<I, F> DoubleEndedFallibleIterator for Filter<I, F>
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
         while let Some(v) = try!(self.it.next_back()) {
            if (self.f)(&v) {
+               return Ok(Some(v));
+           }
+        }
+
+        Ok(None)
+    }
+}
+
+/// An iterator which both filters and maps the values of the underlying
+/// iterator.
+#[derive(Debug)]
+pub struct FilterMap<I, F> {
+    it: I,
+    f: F,
+}
+
+impl<B, I, F> FallibleIterator for FilterMap<I, F>
+    where I: FallibleIterator,
+          F: FnMut(I::Item) -> Option<B>,
+{
+    type Item = B;
+    type Error = I::Error;
+
+    #[inline]
+    fn next(&mut self) -> Result<Option<B>, I::Error> {
+        while let Some(v) = try!(self.it.next()) {
+           if let Some(v) = (self.f)(v) {
+               return Ok(Some(v));
+           }
+        }
+
+        Ok(None)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, self.it.size_hint().1)
+    }
+}
+
+impl<B, I, F> DoubleEndedFallibleIterator for FilterMap<I, F>
+    where I: DoubleEndedFallibleIterator,
+          F: FnMut(I::Item) -> Option<B>,
+{
+    #[inline]
+    fn next_back(&mut self) -> Result<Option<B>, I::Error> {
+        while let Some(v) = try!(self.it.next_back()) {
+           if let Some(v) = (self.f)(v) {
                return Ok(Some(v));
            }
         }
