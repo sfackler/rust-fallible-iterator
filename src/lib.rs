@@ -87,7 +87,8 @@ pub trait FallibleIterator {
     /// Determines if all elements of this iterator matches a predicate.
     #[inline]
     fn all<F>(&mut self, mut f: F) -> Result<bool, Self::Error>
-        where F: FnMut(Self::Item) -> bool
+        where Self: Sized,
+              F: FnMut(Self::Item) -> bool
     {
         while let Some(v) = try!(self.next()) {
             if !f(v) {
@@ -101,7 +102,8 @@ pub trait FallibleIterator {
     /// Determines if any element of this iterator matches a predicate.
     #[inline]
     fn any<F>(&mut self, mut f: F) -> Result<bool, Self::Error>
-        where F: FnMut(Self::Item) -> bool
+        where Self: Sized,
+              F: FnMut(Self::Item) -> bool
     {
         while let Some(v) = try!(self.next()) {
             if f(v) {
@@ -1088,9 +1090,4 @@ impl<T, U> FallibleIterator for Zip<T, U>
     }
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    fn _is_object_safe(_: &FallibleIterator<Item = (), Error = ()>) {}
-}
+fn _is_object_safe(_: &FallibleIterator<Item = (), Error = ()>) {}
