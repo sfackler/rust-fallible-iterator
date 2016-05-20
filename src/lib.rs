@@ -536,7 +536,7 @@ impl<'a, T, I> DoubleEndedFallibleIterator for Cloned<I>
     }
 }
 
-/// Converts an `Iterator<Item = Result<T, E>>` into a `FailingIterator<Item = T, Error = E>`.
+/// Converts an `Iterator<Item = Result<T, E>>` into a `FallibleIterator<Item = T, Error = E>`.
 #[inline]
 pub fn convert<T, E, I>(it: I) -> Convert<I>
     where I: iter::Iterator<Item = Result<T, E>>
