@@ -395,6 +395,31 @@ pub trait FallibleIterator {
         Ok(None)
     }
 
+    /// Lexicographically compares the elements of this iterator to that of
+    /// another.
+    #[inline]
+    fn partial_cmp<I>(mut self, other: I) -> Result<Option<Ordering>, Self::Error>
+        where Self: Sized,
+              I: IntoFallibleIterator<Item = Self::Item, Error = Self::Error>,
+              Self::Item: PartialOrd
+    {
+        let mut other = other.into_fallible_iterator();
+
+        loop {
+            match (try!(self.next()), try!(other.next())) {
+                (None, None) => return Ok(Some(Ordering::Equal)),
+                (None, _) => return Ok(Some(Ordering::Less)),
+                (_, None) => return Ok(Some(Ordering::Greater)),
+                (Some(x), Some(y)) => {
+                    match x.partial_cmp(&y) {
+                        Some(Ordering::Equal) => {}
+                        o => return Ok(o),
+                    }
+                }
+            }
+        }
+    }
+
     /// Returns an iterator that can peek at the next element without consuming
     /// it.
     #[inline]
