@@ -42,7 +42,7 @@
 //!     // work with item
 //! }
 //! ```
-#![doc(html_root_url = "https://sfackler.github.io/rust-fallible-iterator/doc/v0.1.0")]
+#![doc(html_root_url = "https://sfackler.github.io/rust-fallible-iterator/doc/v0.1.1")]
 
 use std::cmp::{self, Ordering};
 use std::collections::{HashMap, HashSet, BTreeMap, BTreeSet};
