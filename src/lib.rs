@@ -502,6 +502,29 @@ pub trait FallibleIterator {
             }
         }
     }
+
+    /// Determines if the elements of this iterator are not equal to those of
+    /// another.
+    #[inline]
+    fn ne<I>(mut self, other: I) -> Result<bool, Self::Error>
+        where Self: Sized,
+              I: IntoFallibleIterator<Error = Self::Error>,
+              Self::Item: PartialEq<I::Item>
+    {
+        let mut other = other.into_fallible_iterator();
+
+        loop {
+            match (try!(self.next()), try!(other.next())) {
+                (None, None) => return Ok(false),
+                (None, _) | (_, None) => return Ok(true),
+                (Some(x), Some(y)) => {
+                    if x != y {
+                        return Ok(true);
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl<'a, I: FallibleIterator + ?Sized> FallibleIterator for &'a mut I {
