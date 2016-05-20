@@ -188,10 +188,7 @@ pub trait FallibleIterator {
         where Self: Sized,
               F: FnMut(&Self::Item) -> bool
     {
-        Filter {
-            it: self,
-            f: f,
-        }
+        Filter { it: self, f: f }
     }
 
     /// Returns an iterator which both filters and maps.
@@ -200,10 +197,7 @@ pub trait FallibleIterator {
         where Self: Sized,
               F: FnMut(Self::Item) -> Option<B>
     {
-        FilterMap {
-            it: self,
-            f: f,
-        }
+        FilterMap { it: self, f: f }
     }
 
     /// Returns the first element of the iterator that matches a predicate.
@@ -1021,7 +1015,7 @@ pub struct Filter<I, F> {
 
 impl<I, F> FallibleIterator for Filter<I, F>
     where I: FallibleIterator,
-          F: FnMut(&I::Item) -> bool,
+          F: FnMut(&I::Item) -> bool
 {
     type Item = I::Item;
     type Error = I::Error;
@@ -1029,9 +1023,9 @@ impl<I, F> FallibleIterator for Filter<I, F>
     #[inline]
     fn next(&mut self) -> Result<Option<I::Item>, I::Error> {
         while let Some(v) = try!(self.it.next()) {
-           if (self.f)(&v) {
-               return Ok(Some(v));
-           }
+            if (self.f)(&v) {
+                return Ok(Some(v));
+            }
         }
 
         Ok(None)
@@ -1050,9 +1044,9 @@ impl<I, F> DoubleEndedFallibleIterator for Filter<I, F>
     #[inline]
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
         while let Some(v) = try!(self.it.next_back()) {
-           if (self.f)(&v) {
-               return Ok(Some(v));
-           }
+            if (self.f)(&v) {
+                return Ok(Some(v));
+            }
         }
 
         Ok(None)
@@ -1069,7 +1063,7 @@ pub struct FilterMap<I, F> {
 
 impl<B, I, F> FallibleIterator for FilterMap<I, F>
     where I: FallibleIterator,
-          F: FnMut(I::Item) -> Option<B>,
+          F: FnMut(I::Item) -> Option<B>
 {
     type Item = B;
     type Error = I::Error;
@@ -1077,9 +1071,9 @@ impl<B, I, F> FallibleIterator for FilterMap<I, F>
     #[inline]
     fn next(&mut self) -> Result<Option<B>, I::Error> {
         while let Some(v) = try!(self.it.next()) {
-           if let Some(v) = (self.f)(v) {
-               return Ok(Some(v));
-           }
+            if let Some(v) = (self.f)(v) {
+                return Ok(Some(v));
+            }
         }
 
         Ok(None)
@@ -1093,14 +1087,14 @@ impl<B, I, F> FallibleIterator for FilterMap<I, F>
 
 impl<B, I, F> DoubleEndedFallibleIterator for FilterMap<I, F>
     where I: DoubleEndedFallibleIterator,
-          F: FnMut(I::Item) -> Option<B>,
+          F: FnMut(I::Item) -> Option<B>
 {
     #[inline]
     fn next_back(&mut self) -> Result<Option<B>, I::Error> {
         while let Some(v) = try!(self.it.next_back()) {
-           if let Some(v) = (self.f)(v) {
-               return Ok(Some(v));
-           }
+            if let Some(v) = (self.f)(v) {
+                return Ok(Some(v));
+            }
         }
 
         Ok(None)
