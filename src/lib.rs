@@ -320,21 +320,18 @@ pub trait FallibleIterator {
               F: FnMut(&Self::Item) -> B
     {
         let mut max = match try!(self.next()) {
-            Some(v) => {
-                let b = f(&v);
-                (v, b)
-            }
+            Some(v) => (f(&v), v),
             None => return Ok(None),
         };
 
         while let Some(v) = try!(self.next()) {
             let b = f(&v);
-            if max.1 < b {
-                max = (v, b);
+            if max.0 < b {
+                max = (b, v);
             }
         }
 
-        Ok(Some(max.0))
+        Ok(Some(max.1))
     }
 
     /// Returns the minimal element of the iterator.
@@ -366,21 +363,18 @@ pub trait FallibleIterator {
               F: FnMut(&Self::Item) -> B
     {
         let mut min = match try!(self.next()) {
-            Some(v) => {
-                let b = f(&v);
-                (v, b)
-            }
+            Some(v) => (f(&v), v),
             None => return Ok(None),
         };
 
         while let Some(v) = try!(self.next()) {
             let b = f(&v);
-            if min.1 > b {
-                min = (v, b);
+            if min.0 > b {
+                min = (b, v);
             }
         }
 
-        Ok(Some(min.0))
+        Ok(Some(min.1))
     }
 
     /// Returns the `n`th element of the iterator.
