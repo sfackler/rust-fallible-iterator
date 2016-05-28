@@ -49,6 +49,9 @@ use std::collections::{HashMap, HashSet, BTreeMap, BTreeSet};
 use std::iter;
 use std::hash::Hash;
 
+#[cfg(test)]
+mod test;
+
 /// An `Iterator`-like trait that allows for calculation of items to fail.
 pub trait FallibleIterator {
     /// The type being iterated over.
