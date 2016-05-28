@@ -84,7 +84,7 @@ pub trait FallibleIterator {
         (0, None)
     }
 
-    /// Determines if all elements of this iterator matches a predicate.
+    /// Determines if all elements of this iterator match a predicate.
     #[inline]
     fn all<F>(&mut self, mut f: F) -> Result<bool, Self::Error>
         where Self: Sized,
@@ -374,8 +374,7 @@ pub trait FallibleIterator {
     /// Returns the `n`th element of the iterator.
     #[inline]
     fn nth(&mut self, mut n: usize) -> Result<Option<Self::Item>, Self::Error> {
-        let mut it = self.take(n);
-        while let Some(e) = try!(it.next()) {
+        while let Some(e) = try!(self.next()) {
             if n == 0 {
                 return Ok(Some(e));
             }
