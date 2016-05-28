@@ -1,6 +1,6 @@
 use std::iter;
 
-use super::*;
+use super::{convert, FallibleIterator};
 
 #[test]
 fn all() {
