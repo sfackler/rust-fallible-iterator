@@ -1,11 +1,11 @@
 //! "Fallible" iterators.
 //!
-//! The iterator APIs in the rust standard library do not support iteration
-//! that can fail in a particularly robust way. The way that these iterators
-//! are typically modeled as iterators over `Result<T, E>`; for example, the
-//! `Lines` iterator returns `io::Result<String>`s. When simply iterating over
-//! these types, the value being iterated over either has be unwrapped in some
-//! way before it can be used:
+//! The iterator APIs in the Rust standard library do not support iteration
+//! that can fail in a first class manner. These iterators are typically modeled
+//! as iterating over `Result<T, E>` values; for example, the `Lines` iterator
+//! returns `io::Result<String>`s. When simply iterating over these types, the
+//! value being iterated over must be unwrapped in some way before it can be
+//! used:
 //!
 //! ```ignore
 //! for line in reader.lines() {
@@ -42,12 +42,15 @@
 //!     // work with item
 //! }
 //! ```
-#![doc(html_root_url = "https://sfackler.github.io/rust-fallible-iterator/doc/v0.1.1")]
+#![doc(html_root_url = "https://sfackler.github.io/rust-fallible-iterator/doc/v0.1.2")]
 
 use std::cmp::{self, Ordering};
 use std::collections::{HashMap, HashSet, BTreeMap, BTreeSet};
 use std::iter;
 use std::hash::Hash;
+
+#[cfg(test)]
+mod test;
 
 /// An `Iterator`-like trait that allows for calculation of items to fail.
 pub trait FallibleIterator {
@@ -84,7 +87,7 @@ pub trait FallibleIterator {
         (0, None)
     }
 
-    /// Determines if all elements of this iterator matches a predicate.
+    /// Determines if all elements of this iterator match a predicate.
     #[inline]
     fn all<F>(&mut self, mut f: F) -> Result<bool, Self::Error>
         where Self: Sized,
@@ -216,7 +219,7 @@ pub trait FallibleIterator {
     }
 
     /// Returns an iterator which yields this iterator's elements and ends after
-    /// the frist `Ok(None)`.
+    /// the first `Ok(None)`.
     ///
     /// The behavior of calling `next` after it has previously returned
     /// `Ok(None)` is normally unspecified. The iterator returned by this method
@@ -374,8 +377,7 @@ pub trait FallibleIterator {
     /// Returns the `n`th element of the iterator.
     #[inline]
     fn nth(&mut self, mut n: usize) -> Result<Option<Self::Item>, Self::Error> {
-        let mut it = self.take(n);
-        while let Some(e) = try!(it.next()) {
+        while let Some(e) = try!(self.next()) {
             if n == 0 {
                 return Ok(Some(e));
             }
@@ -422,7 +424,7 @@ pub trait FallibleIterator {
         Rev(self)
     }
 
-    /// Returns an iterator that yeilds only the first `n` values of this
+    /// Returns an iterator that yields only the first `n` values of this
     /// iterator.
     #[inline]
     fn take(self, n: usize) -> Take<Self>
@@ -1348,7 +1350,7 @@ impl<I> DoubleEndedFallibleIterator for Rev<I>
     }
 }
 
-/// An iterator which yeilds a limited number of elements from the underlying
+/// An iterator which yields a limited number of elements from the underlying
 /// iterator.
 #[derive(Debug)]
 pub struct Take<I> {
