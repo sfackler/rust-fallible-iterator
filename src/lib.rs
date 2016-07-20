@@ -1,11 +1,11 @@
 //! "Fallible" iterators.
 //!
-//! The iterator APIs in the rust standard library do not support iteration
-//! that can fail in a particularly robust way. The way that these iterators
-//! are typically modeled as iterators over `Result<T, E>`; for example, the
-//! `Lines` iterator returns `io::Result<String>`s. When simply iterating over
-//! these types, the value being iterated over either has be unwrapped in some
-//! way before it can be used:
+//! The iterator APIs in the Rust standard library do not support iteration
+//! that can fail in a first class manner. These iterators are typically modeled
+//! as iterating over `Result<T, E>` values; for example, the `Lines` iterator
+//! returns `io::Result<String>`s. When simply iterating over these types, the
+//! value being iterated over must be unwrapped in some way before it can be
+//! used:
 //!
 //! ```ignore
 //! for line in reader.lines() {
@@ -219,7 +219,7 @@ pub trait FallibleIterator {
     }
 
     /// Returns an iterator which yields this iterator's elements and ends after
-    /// the frist `Ok(None)`.
+    /// the first `Ok(None)`.
     ///
     /// The behavior of calling `next` after it has previously returned
     /// `Ok(None)` is normally unspecified. The iterator returned by this method
@@ -424,7 +424,7 @@ pub trait FallibleIterator {
         Rev(self)
     }
 
-    /// Returns an iterator that yeilds only the first `n` values of this
+    /// Returns an iterator that yields only the first `n` values of this
     /// iterator.
     #[inline]
     fn take(self, n: usize) -> Take<Self>
@@ -1350,7 +1350,7 @@ impl<I> DoubleEndedFallibleIterator for Rev<I>
     }
 }
 
-/// An iterator which yeilds a limited number of elements from the underlying
+/// An iterator which yields a limited number of elements from the underlying
 /// iterator.
 #[derive(Debug)]
 pub struct Take<I> {
