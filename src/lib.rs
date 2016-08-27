@@ -34,8 +34,8 @@
 //! Self::Error>` rather than `Option<Self::Item>`. Methods like `count` return
 //! `Result`s as well.
 //!
-//! This does mean that fallible iterators are incompatible with Rust's for loop
-//! syntax, but `while let` loops offer a similar level of ergonomics:
+//! This does mean that fallible iterators are incompatible with Rust's `for`
+//! loop syntax, but `while let` loops offer a similar level of ergonomics:
 //!
 //! ```ignore
 //! while let Some(item) = try!(iter.next()) {
