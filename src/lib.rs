@@ -43,6 +43,7 @@
 //! }
 //! ```
 #![doc(html_root_url = "https://sfackler.github.io/rust-fallible-iterator/doc/v0.1.2")]
+#![warn(missing_docs)]
 
 use std::cmp::{self, Ordering};
 use std::collections::{HashMap, HashSet, BTreeMap, BTreeSet};
@@ -711,7 +712,9 @@ pub trait DoubleEndedFallibleIterator: FallibleIterator {
     fn next_back(&mut self) -> Result<Option<Self::Item>, Self::Error>;
 }
 
+/// Conversion from a fallible iterator.
 pub trait FromFallibleIterator<T>: Sized {
+    /// Creates a value from a fallible iterator.
     fn from_fallible_iterator<I>(it: I) -> Result<Self, I::Error>
         where I: FallibleIterator<Item = T>;
 }
@@ -791,10 +794,16 @@ impl<K, V> FromFallibleIterator<(K, V)> for BTreeMap<K, V>
 
 /// Conversion into a `FallibleIterator`.
 pub trait IntoFallibleIterator {
+    /// The elements of the iterator.
     type Item;
+
+    /// The error value of the iterator.
     type Error;
+
+    /// The iterator.
     type IntoIter: FallibleIterator<Item = Self::Item, Error = Self::Error>;
 
+    /// Creates a fallible iterator from a value.
     fn into_fallible_iterator(self) -> Self::IntoIter;
 }
 
