@@ -9,6 +9,24 @@ fn all() {
 }
 
 #[test]
+fn and_then() {
+    let it = convert(vec![0, 1, 2, 3, 4].into_iter().map(Ok::<u32, ()>)).and_then(|n| Ok(n * 2));
+    assert_eq!(it.collect::<Vec<_>>().unwrap(), [0, 2, 4, 6, 8]);
+
+    let mut it = convert(vec![0, 1, 2, 3, 4].into_iter().map(Ok::<u32, ()>))
+        .and_then(|n| {
+            if n == 2 {
+                Err(())
+            } else {
+                Ok(n * 2)
+            }
+        });
+    assert_eq!(it.next().unwrap().unwrap(), 0);
+    assert_eq!(it.next().unwrap().unwrap(), 2);
+    assert_eq!(it.next(), Err(()));
+}
+
+#[test]
 fn any() {
     assert!(convert([0, 1, 2, 3].iter().map(Ok::<&u32, ()>)).any(|&i| i == 3).unwrap());
     assert!(!convert([0, 1, 2, 4].iter().map(Ok::<&u32, ()>)).any(|&i| i == 3).unwrap());

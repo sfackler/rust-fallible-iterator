@@ -102,6 +102,16 @@ pub trait FallibleIterator {
         Ok(true)
     }
 
+    /// Returns an iterator which applies a fallible transform to the elements
+    /// of the underlying iterator.
+    #[inline]
+    fn and_then<F, B>(self, f: F) -> AndThen<Self, F>
+        where Self: Sized,
+              F: FnMut(Self::Item) -> Result<B, Self::Error>
+    {
+        AndThen { it: self, f: f }
+    }
+
     /// Determines if any element of this iterator matches a predicate.
     #[inline]
     fn any<F>(&mut self, mut f: F) -> Result<bool, Self::Error>
@@ -798,6 +808,36 @@ impl<I> IntoFallibleIterator for I
     #[inline]
     fn into_fallible_iterator(self) -> I {
         self
+    }
+}
+
+/// An iterator which applies a fallible transform to the elements of the
+/// underlying iterator.
+#[derive(Debug)]
+pub struct AndThen<T, F> {
+    it: T,
+    f: F,
+}
+
+impl<T, F, B> FallibleIterator for AndThen<T, F>
+    where T: FallibleIterator,
+          F: FnMut(T::Item) -> Result<B, T::Error>
+{
+    type Item = B;
+    type Error = T::Error;
+
+    #[inline]
+    fn next(&mut self) -> Result<Option<B>, T::Error> {
+        match self.it.next() {
+            Ok(Some(v)) => Ok(Some(try!((self.f)(v)))),
+            Ok(None) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.it.size_hint()
     }
 }
 
