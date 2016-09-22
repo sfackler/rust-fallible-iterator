@@ -34,15 +34,16 @@
 //! Self::Error>` rather than `Option<Self::Item>`. Methods like `count` return
 //! `Result`s as well.
 //!
-//! This does mean that fallible iterators are incompatible with Rust's for loop
-//! syntax, but `while let` loops offer a similar level of ergonomics:
+//! This does mean that fallible iterators are incompatible with Rust's `for`
+//! loop syntax, but `while let` loops offer a similar level of ergonomics:
 //!
 //! ```ignore
 //! while let Some(item) = try!(iter.next()) {
 //!     // work with item
 //! }
 //! ```
-#![doc(html_root_url = "https://sfackler.github.io/rust-fallible-iterator/doc/v0.1.2")]
+#![doc(html_root_url = "https://sfackler.github.io/rust-fallible-iterator/doc/v0.1.3")]
+#![warn(missing_docs)]
 
 use std::cmp::{self, Ordering};
 use std::collections::{HashMap, HashSet, BTreeMap, BTreeSet};
@@ -100,6 +101,16 @@ pub trait FallibleIterator {
         }
 
         Ok(true)
+    }
+
+    /// Returns an iterator which applies a fallible transform to the elements
+    /// of the underlying iterator.
+    #[inline]
+    fn and_then<F, B>(self, f: F) -> AndThen<Self, F>
+        where Self: Sized,
+              F: FnMut(Self::Item) -> Result<B, Self::Error>
+    {
+        AndThen { it: self, f: f }
     }
 
     /// Determines if any element of this iterator matches a predicate.
@@ -701,7 +712,9 @@ pub trait DoubleEndedFallibleIterator: FallibleIterator {
     fn next_back(&mut self) -> Result<Option<Self::Item>, Self::Error>;
 }
 
+/// Conversion from a fallible iterator.
 pub trait FromFallibleIterator<T>: Sized {
+    /// Creates a value from a fallible iterator.
     fn from_fallible_iterator<I>(it: I) -> Result<Self, I::Error>
         where I: FallibleIterator<Item = T>;
 }
@@ -781,10 +794,16 @@ impl<K, V> FromFallibleIterator<(K, V)> for BTreeMap<K, V>
 
 /// Conversion into a `FallibleIterator`.
 pub trait IntoFallibleIterator {
+    /// The elements of the iterator.
     type Item;
+
+    /// The error value of the iterator.
     type Error;
+
+    /// The iterator.
     type IntoIter: FallibleIterator<Item = Self::Item, Error = Self::Error>;
 
+    /// Creates a fallible iterator from a value.
     fn into_fallible_iterator(self) -> Self::IntoIter;
 }
 
@@ -798,6 +817,36 @@ impl<I> IntoFallibleIterator for I
     #[inline]
     fn into_fallible_iterator(self) -> I {
         self
+    }
+}
+
+/// An iterator which applies a fallible transform to the elements of the
+/// underlying iterator.
+#[derive(Debug)]
+pub struct AndThen<T, F> {
+    it: T,
+    f: F,
+}
+
+impl<T, F, B> FallibleIterator for AndThen<T, F>
+    where T: FallibleIterator,
+          F: FnMut(T::Item) -> Result<B, T::Error>
+{
+    type Item = B;
+    type Error = T::Error;
+
+    #[inline]
+    fn next(&mut self) -> Result<Option<B>, T::Error> {
+        match self.it.next() {
+            Ok(Some(v)) => Ok(Some(try!((self.f)(v)))),
+            Ok(None) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.it.size_hint()
     }
 }
 
