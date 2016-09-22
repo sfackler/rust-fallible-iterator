@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `DoubleEndedFallibleIterator` trait in crate `fallible_iterator`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, DoubleEndedFallibleIterator">
+
+    <title>fallible_iterator::DoubleEndedFallibleIterator - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'><a href='index.html'>fallible_iterator</a></p><script>window.sidebarCurrent = {name: 'DoubleEndedFallibleIterator', ty: 'trait', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content trait">
+<h1 class='fqn'><span class='in-band'>Trait <a href='index.html'>fallible_iterator</a>::<wbr><a class='trait' href=''>DoubleEndedFallibleIterator</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-324' class='srclink' href='../src/fallible_iterator/src/lib.rs.html#710-713' title='goto source code'>[src]</a></span></h1>
+<pre class='rust trait'>pub trait DoubleEndedFallibleIterator: <a class='trait' href='../fallible_iterator/trait.FallibleIterator.html' title='fallible_iterator::FallibleIterator'>FallibleIterator</a> {
+    fn <a href='#tymethod.next_back' class='fnname'>next_back</a>(&amp;mut self) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;<a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;Self::<a class='trait' href='../fallible_iterator/trait.DoubleEndedFallibleIterator.html' title='fallible_iterator::DoubleEndedFallibleIterator'>Item</a>&gt;,&nbsp;Self::<a class='trait' href='../fallible_iterator/trait.DoubleEndedFallibleIterator.html' title='fallible_iterator::DoubleEndedFallibleIterator'>Error</a>&gt;;
+}</pre><div class='docblock'><p>A fallible iterator able to yield elements from both ends.</p>
+</div>
+            <h2 id='required-methods'>Required Methods</h2>
+            <div class='methods'>
+        <h3 id='tymethod.next_back' class='method stab '><code>fn <a href='#tymethod.next_back' class='fnname'>next_back</a>(&amp;mut self) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;<a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;Self::<a class='trait' href='../fallible_iterator/trait.DoubleEndedFallibleIterator.html' title='fallible_iterator::DoubleEndedFallibleIterator'>Item</a>&gt;,&nbsp;Self::<a class='trait' href='../fallible_iterator/trait.DoubleEndedFallibleIterator.html' title='fallible_iterator::DoubleEndedFallibleIterator'>Error</a>&gt;</code></h3><div class='docblock'><p>Advances the end of the iterator, returning the last value.</p>
+</div></div>
+        <h2 id='implementors'>Implementors</h2>
+        <ul class='item-list' id='implementors-list'>
+    <li><code>impl&lt;'a,&nbsp;I:&nbsp;<a class='trait' href='../fallible_iterator/trait.DoubleEndedFallibleIterator.html' title='fallible_iterator::DoubleEndedFallibleIterator'>DoubleEndedFallibleIterator</a> + ?<a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html' title='core::marker::Sized'>Sized</a>&gt; DoubleEndedFallibleIterator for &amp;'a mut I</code></li>
+<li><code>impl&lt;I:&nbsp;<a class='trait' href='../fallible_iterator/trait.DoubleEndedFallibleIterator.html' title='fallible_iterator::DoubleEndedFallibleIterator'>DoubleEndedFallibleIterator</a> + ?<a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html' title='core::marker::Sized'>Sized</a>&gt; DoubleEndedFallibleIterator for <a class='struct' href='https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html' title='alloc::boxed::Box'>Box</a>&lt;I&gt;</code></li>
+<li><code>impl&lt;T,&nbsp;U&gt; DoubleEndedFallibleIterator for <a class='struct' href='../fallible_iterator/struct.Chain.html' title='fallible_iterator::Chain'>Chain</a>&lt;T,&nbsp;U&gt; <span class='where'>where T: <a class='trait' href='../fallible_iterator/trait.DoubleEndedFallibleIterator.html' title='fallible_iterator::DoubleEndedFallibleIterator'>DoubleEndedFallibleIterator</a>, U: <a class='trait' href='../fallible_iterator/trait.DoubleEndedFallibleIterator.html' title='fallible_iterator::DoubleEndedFallibleIterator'>DoubleEndedFallibleIterator</a>&lt;Item=T::Item,&nbsp;Error=T::Error&gt;</span></code></li>
+<li><code>impl&lt;'a,&nbsp;T,&nbsp;I&gt; DoubleEndedFallibleIterator for <a class='struct' href='../fallible_iterator/struct.Cloned.html' title='fallible_iterator::Cloned'>Cloned</a>&lt;I&gt; <span class='where'>where I: <a class='trait' href='../fallible_iterator/trait.DoubleEndedFallibleIterator.html' title='fallible_iterator::DoubleEndedFallibleIterator'>DoubleEndedFallibleIterator</a>&lt;Item=&amp;'a T&gt;, T: 'a + <a class='trait' href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a></span></code></li>
+<li><code>impl&lt;T,&nbsp;E,&nbsp;I&gt; DoubleEndedFallibleIterator for <a class='struct' href='../fallible_iterator/struct.Convert.html' title='fallible_iterator::Convert'>Convert</a>&lt;I&gt; <span class='where'>where I: <a class='trait' href='https://doc.rust-lang.org/nightly/core/iter/traits/trait.DoubleEndedIterator.html' title='core::iter::traits::DoubleEndedIterator'>DoubleEndedIterator</a>&lt;Item=<a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;T,&nbsp;E&gt;&gt;</span></code></li>
+<li><code>impl&lt;I,&nbsp;F&gt; DoubleEndedFallibleIterator for <a class='struct' href='../fallible_iterator/struct.Filter.html' title='fallible_iterator::Filter'>Filter</a>&lt;I,&nbsp;F&gt; <span class='where'>where I: <a class='trait' href='../fallible_iterator/trait.DoubleEndedFallibleIterator.html' title='fallible_iterator::DoubleEndedFallibleIterator'>DoubleEndedFallibleIterator</a>, F: <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.FnMut.html' title='core::ops::FnMut'>FnMut</a>(&amp;I::Item) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></span></code></li>
+<li><code>impl&lt;B,&nbsp;I,&nbsp;F&gt; DoubleEndedFallibleIterator for <a class='struct' href='../fallible_iterator/struct.FilterMap.html' title='fallible_iterator::FilterMap'>FilterMap</a>&lt;I,&nbsp;F&gt; <span class='where'>where I: <a class='trait' href='../fallible_iterator/trait.DoubleEndedFallibleIterator.html' title='fallible_iterator::DoubleEndedFallibleIterator'>DoubleEndedFallibleIterator</a>, F: <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.FnMut.html' title='core::ops::FnMut'>FnMut</a>(I::Item) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;B&gt;</span></code></li>
+<li><code>impl&lt;B,&nbsp;F,&nbsp;I&gt; DoubleEndedFallibleIterator for <a class='struct' href='../fallible_iterator/struct.Map.html' title='fallible_iterator::Map'>Map</a>&lt;I,&nbsp;F&gt; <span class='where'>where I: <a class='trait' href='../fallible_iterator/trait.DoubleEndedFallibleIterator.html' title='fallible_iterator::DoubleEndedFallibleIterator'>DoubleEndedFallibleIterator</a>, F: <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.FnMut.html' title='core::ops::FnMut'>FnMut</a>(I::Item) -&gt; B</span></code></li>
+<li><code>impl&lt;B,&nbsp;F,&nbsp;I&gt; DoubleEndedFallibleIterator for <a class='struct' href='../fallible_iterator/struct.MapErr.html' title='fallible_iterator::MapErr'>MapErr</a>&lt;I,&nbsp;F&gt; <span class='where'>where I: <a class='trait' href='../fallible_iterator/trait.DoubleEndedFallibleIterator.html' title='fallible_iterator::DoubleEndedFallibleIterator'>DoubleEndedFallibleIterator</a>, F: <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.FnMut.html' title='core::ops::FnMut'>FnMut</a>(I::Error) -&gt; B</span></code></li>
+<li><code>impl&lt;I&gt; DoubleEndedFallibleIterator for <a class='struct' href='../fallible_iterator/struct.Rev.html' title='fallible_iterator::Rev'>Rev</a>&lt;I&gt; <span class='where'>where I: <a class='trait' href='../fallible_iterator/trait.DoubleEndedFallibleIterator.html' title='fallible_iterator::DoubleEndedFallibleIterator'>DoubleEndedFallibleIterator</a></span></code></li>
+</ul><script type="text/javascript" async
+                         src="../implementors/fallible_iterator/trait.DoubleEndedFallibleIterator.js">
+                 </script></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "fallible_iterator";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../jquery.js"></script>
+    <script src="../main.js"></script>
+    
+    <script defer src="../search-index.js"></script>
+</body>
+</html>
