@@ -42,7 +42,7 @@
 //!     // work with item
 //! }
 //! ```
-#![doc(html_root_url = "https://sfackler.github.io/rust-fallible-iterator/doc/v0.1.2")]
+#![doc(html_root_url = "https://sfackler.github.io/rust-fallible-iterator/doc/v0.1.3")]
 #![warn(missing_docs)]
 
 use std::cmp::{self, Ordering};
