@@ -42,7 +42,7 @@
 //!     // work with item
 //! }
 //! ```
-#![doc(html_root_url = "https://sfackler.github.io/rust-fallible-iterator/doc/v0.1.3")]
+#![doc(html_root_url = "https://docs.rs/fallible-iterator/0.1")]
 #![warn(missing_docs)]
 #![cfg_attr(feature = "alloc", feature(alloc))]
 #![no_std]
