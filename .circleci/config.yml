@@ -55,5 +55,6 @@ jobs:
 workflows:
   version: 2
   tests:
-  - stable
-  - nightly
+    jobs:
+    - stable
+    - nightly
