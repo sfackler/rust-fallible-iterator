@@ -1,6 +1,13 @@
 language: rust
-rust:
-- nightly
-- 1.8.0
+matrix:
+  include:
+  - rust: stable
+    env: FEATURES=''
+  - rust: stable
+    env: FEATURES='std'
+  - rust: nightly
+    env: FEATURES='alloc'
+  - rust: nightly
+    env: FEATURES='alloc std'
 script:
-- cargo test
+- cargo --no-default-features --features "$FEATURES" test

@@ -44,12 +44,39 @@
 //! ```
 #![doc(html_root_url = "https://sfackler.github.io/rust-fallible-iterator/doc/v0.1.3")]
 #![warn(missing_docs)]
+#![cfg_attr(feature = "alloc", feature(alloc))]
+#![no_std]
 
-use std::cmp::{self, Ordering};
-use std::collections::{HashMap, HashSet, BTreeMap, BTreeSet};
-use std::iter;
-use std::hash::Hash;
+use core::cmp::{self, Ordering};
+use core::iter;
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg_attr(test, macro_use)]
+extern crate alloc;
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+mod imports {
+    pub use alloc::boxed::Box;
+    pub use alloc::vec::Vec;
+    pub use alloc::btree_map::BTreeMap;
+    pub use alloc::btree_set::BTreeSet;
+}
+
+#[cfg(feature = "std")]
+#[cfg_attr(test, macro_use)]
+extern crate std;
+
+#[cfg(feature = "std")]
+mod imports {
+    pub use std::prelude::v1::*;
+    pub use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+    pub use std::hash::Hash;
+}
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+use imports::*;
+
+#[cfg(any(feature = "std", feature = "alloc"))]
 #[cfg(test)]
 mod test;
 
@@ -684,6 +711,7 @@ impl<'a, I: DoubleEndedFallibleIterator + ?Sized> DoubleEndedFallibleIterator fo
     }
 }
 
+#[cfg(any(feature = "std", feature = "alloc"))]
 impl<I: FallibleIterator + ?Sized> FallibleIterator for Box<I> {
     type Item = I::Item;
     type Error = I::Error;
@@ -699,6 +727,7 @@ impl<I: FallibleIterator + ?Sized> FallibleIterator for Box<I> {
     }
 }
 
+#[cfg(any(feature = "std", feature = "alloc"))]
 impl<I: DoubleEndedFallibleIterator + ?Sized> DoubleEndedFallibleIterator for Box<I> {
     #[inline]
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
@@ -719,6 +748,7 @@ pub trait FromFallibleIterator<T>: Sized {
         where I: FallibleIterator<Item = T>;
 }
 
+#[cfg(any(feature = "std", feature = "alloc"))]
 impl<T> FromFallibleIterator<T> for Vec<T> {
     #[inline]
     fn from_fallible_iterator<I>(mut it: I) -> Result<Vec<T>, I::Error>
@@ -732,6 +762,7 @@ impl<T> FromFallibleIterator<T> for Vec<T> {
     }
 }
 
+#[cfg(feature = "std")]
 impl<T> FromFallibleIterator<T> for HashSet<T>
     where T: Hash + Eq
 {
@@ -747,6 +778,7 @@ impl<T> FromFallibleIterator<T> for HashSet<T>
     }
 }
 
+#[cfg(feature = "std")]
 impl<K, V> FromFallibleIterator<(K, V)> for HashMap<K, V>
     where K: Hash + Eq
 {
@@ -762,6 +794,7 @@ impl<K, V> FromFallibleIterator<(K, V)> for HashMap<K, V>
     }
 }
 
+#[cfg(any(feature = "std", feature = "alloc"))]
 impl<T> FromFallibleIterator<T> for BTreeSet<T>
     where T: Ord
 {
@@ -777,6 +810,7 @@ impl<T> FromFallibleIterator<T> for BTreeSet<T>
     }
 }
 
+#[cfg(any(feature = "std", feature = "alloc"))]
 impl<K, V> FromFallibleIterator<(K, V)> for BTreeMap<K, V>
     where K: Ord
 {
