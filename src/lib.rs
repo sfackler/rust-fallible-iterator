@@ -58,8 +58,8 @@ extern crate alloc;
 mod imports {
     pub use alloc::boxed::Box;
     pub use alloc::vec::Vec;
-    pub use alloc::btree_map::BTreeMap;
-    pub use alloc::btree_set::BTreeSet;
+    pub use alloc::collections::btree_map::BTreeMap;
+    pub use alloc::collections::btree_set::BTreeSet;
 }
 
 #[cfg(feature = "std")]
