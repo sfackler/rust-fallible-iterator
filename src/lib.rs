@@ -856,7 +856,7 @@ impl<I> IntoFallibleIterator for I
 
 /// An iterator which applies a fallible transform to the elements of the
 /// underlying iterator.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct AndThen<T, F> {
     it: T,
     f: F,
@@ -884,7 +884,7 @@ impl<T, F, B> FallibleIterator for AndThen<T, F>
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 enum ChainState {
     Both,
     Front,
@@ -892,7 +892,7 @@ enum ChainState {
 }
 
 /// An iterator which yields the elements of one iterator followed by another.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Chain<T, U> {
     front: T,
     back: U,
@@ -970,7 +970,7 @@ impl<T, U> DoubleEndedFallibleIterator for Chain<T, U>
 }
 
 /// An iterator which clones the elements of the underlying iterator.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Cloned<I>(I);
 
 impl<'a, T, I> FallibleIterator for Cloned<I>
@@ -1015,7 +1015,7 @@ pub fn convert<T, E, I>(it: I) -> Convert<I>
 }
 
 /// A fallible iterator that wraps a normal iterator over `Result`s.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Convert<I>(I);
 
 impl<T, E, I> FallibleIterator for Convert<I>
@@ -1054,7 +1054,7 @@ impl<T, E, I> DoubleEndedFallibleIterator for Convert<I>
 
 /// An iterator that yields the iteration count as well as the values of the
 /// underlying iterator.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Enumerate<I> {
     it: I,
     n: usize,
@@ -1092,7 +1092,7 @@ impl<I> FallibleIterator for Enumerate<I>
 
 /// An iterator which uses a predicate to determine which values of the
 /// underlying iterator should be yielded.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Filter<I, F> {
     it: I,
     f: F,
@@ -1140,7 +1140,7 @@ impl<I, F> DoubleEndedFallibleIterator for Filter<I, F>
 
 /// An iterator which both filters and maps the values of the underlying
 /// iterator.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct FilterMap<I, F> {
     it: I,
     f: F,
@@ -1188,7 +1188,7 @@ impl<B, I, F> DoubleEndedFallibleIterator for FilterMap<I, F>
 
 /// An iterator that yields `Ok(None)` forever after the underlying iterator
 /// yields `Ok(None)` once.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Fuse<I> {
     it: I,
     done: bool,
@@ -1232,7 +1232,7 @@ impl<I> FallibleIterator for Fuse<I>
 }
 
 /// A normal (non-fallible) iterator which wraps a fallible iterator.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Iterator<I>(I);
 
 impl<I> iter::Iterator for Iterator<I>
@@ -1270,7 +1270,7 @@ impl<I> DoubleEndedIterator for Iterator<I>
 
 /// An iterator which applies a transform to the elements of the underlying
 /// iterator.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Map<I, F> {
     it: I,
     f: F,
@@ -1311,7 +1311,7 @@ impl<B, F, I> DoubleEndedFallibleIterator for Map<I, F>
 
 /// An iterator which applies a transform to the errors of the underlying
 /// iterator.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct MapErr<I, F> {
     it: I,
     f: F,
@@ -1351,7 +1351,7 @@ impl<B, F, I> DoubleEndedFallibleIterator for MapErr<I, F>
 }
 
 /// An iterator which can look at the next element without consuming it.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Peekable<I: FallibleIterator> {
     it: I,
     next: Option<I::Item>,
@@ -1399,7 +1399,7 @@ impl<I> FallibleIterator for Peekable<I>
 
 /// An iterator which yields elements of the underlying iterator in reverse
 /// order.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Rev<I>(I);
 
 impl<I> FallibleIterator for Rev<I>
@@ -1435,7 +1435,7 @@ impl<I> DoubleEndedFallibleIterator for Rev<I>
 
 /// An iterator which yields a limited number of elements from the underlying
 /// iterator.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Take<I> {
     it: I,
     remaining: usize,
@@ -1469,7 +1469,7 @@ impl<I> FallibleIterator for Take<I>
 
 /// An iterator that yields pairs of this iterator's and another iterator's
 /// values.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Zip<T, U>(T, U);
 
 impl<T, U> FallibleIterator for Zip<T, U>
