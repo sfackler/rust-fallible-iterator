@@ -42,6 +42,27 @@
 //!     // work with item
 //! }
 //! ```
+//!
+//! ## Fallible closure arguments
+//!
+//! Like `Iterator`, many `FallibleIterator` methods take closures as arguments.
+//! These use the same signatures as their `Iterator` counterparts, except that
+//! `FallibleIterator` expects the closures to be fallible: they return
+//! `Result<T, Self::Error>` instead of simply `T`.
+//!
+//! For example, the standard library's `Iterator::filter` adapter method
+//! filters the underlying iterator according to a predicate provided by the
+//! user, whose return type is `bool`. In `FallibleIterator::filter`, however,
+//! the predicate returns `Result<bool, Self::Error>`:
+//!
+//! ```
+//! # use std::error::Error;
+//! # use std::str::FromStr;
+//! # use fallible_iterator::{convert, FallibleIterator};
+//! let numbers = convert("100\n200\nfern\n400".lines().map(Ok::<&str, Box<Error>>));
+//! let big_numbers = numbers.filter(|n| Ok(u64::from_str(n)? > 100));
+//! assert!(big_numbers.count().is_err());
+//! ```
 #![doc(html_root_url = "https://docs.rs/fallible-iterator/0.1")]
 #![warn(missing_docs)]
 #![cfg_attr(feature = "alloc", feature(alloc))]
@@ -116,13 +137,14 @@ pub trait FallibleIterator {
     }
 
     /// Determines if all elements of this iterator match a predicate.
+    /// The predicate may fail; such failures are passed to the caller.
     #[inline]
     fn all<F>(&mut self, mut f: F) -> Result<bool, Self::Error>
         where Self: Sized,
-              F: FnMut(Self::Item) -> bool
+              F: FnMut(Self::Item) -> Result<bool, Self::Error>
     {
         while let Some(v) = try!(self.next()) {
-            if !f(v) {
+            if !f(v)? {
                 return Ok(false);
             }
         }
@@ -130,28 +152,15 @@ pub trait FallibleIterator {
         Ok(true)
     }
 
-    /// Returns an iterator which applies a fallible transform to the elements
-    /// of the underlying iterator.
-    ///
-    /// This is very much like the [`map`](#method.map) method, differing only
-    /// in the transforming closure's return type: `Result<B, ...>` instead of
-    /// just `B`.
-    #[inline]
-    fn and_then<F, B>(self, f: F) -> AndThen<Self, F>
-        where Self: Sized,
-              F: FnMut(Self::Item) -> Result<B, Self::Error>
-    {
-        AndThen { it: self, f: f }
-    }
-
     /// Determines if any element of this iterator matches a predicate.
+    /// The predicate may fail; such failures are passed to the caller.
     #[inline]
     fn any<F>(&mut self, mut f: F) -> Result<bool, Self::Error>
         where Self: Sized,
-              F: FnMut(Self::Item) -> bool
+              F: FnMut(Self::Item) -> Result<bool, Self::Error>
     {
         while let Some(v) = try!(self.next()) {
-            if f(v) {
+            if f(v)? {
                 return Ok(true);
             }
         }
@@ -227,32 +236,35 @@ pub trait FallibleIterator {
     }
 
     /// Returns an iterator which uses a predicate to determine which values
-    /// should be yielded.
+    /// should be yielded. The predicate may fail; such failures are passed to
+    /// the caller.
     #[inline]
     fn filter<F>(self, f: F) -> Filter<Self, F>
         where Self: Sized,
-              F: FnMut(&Self::Item) -> bool
+              F: FnMut(&Self::Item) -> Result<bool, Self::Error>
     {
         Filter { it: self, f: f }
     }
 
-    /// Returns an iterator which both filters and maps.
+    /// Returns an iterator which both filters and maps. The closure may fail;
+    /// such failures are passed along to the consumer.
     #[inline]
     fn filter_map<B, F>(self, f: F) -> FilterMap<Self, F>
         where Self: Sized,
-              F: FnMut(Self::Item) -> Option<B>
+              F: FnMut(Self::Item) -> Result<Option<B>, Self::Error>
     {
         FilterMap { it: self, f: f }
     }
 
     /// Returns the first element of the iterator that matches a predicate.
+    /// The predicate may fail; such failures are passed along to the caller.
     #[inline]
     fn find<F>(&mut self, mut f: F) -> Result<Option<Self::Item>, Self::Error>
         where Self: Sized,
-              F: FnMut(&Self::Item) -> bool
+              F: FnMut(&Self::Item) -> Result<bool, Self::Error>
     {
         while let Some(v) = try!(self.next()) {
-            if f(&v) {
+            if f(&v)? {
                 return Ok(Some(v));
             }
         }
@@ -277,14 +289,15 @@ pub trait FallibleIterator {
     }
 
     /// Applies a function over the elements of the iterator, producing a single
-    /// final value.
+    /// final value. The function may fail; such failures are returned to the
+    /// caller.
     #[inline]
     fn fold<B, F>(mut self, mut init: B, mut f: F) -> Result<B, Self::Error>
         where Self: Sized,
-              F: FnMut(B, Self::Item) -> B
+              F: FnMut(B, Self::Item) -> Result<B, Self::Error>
     {
         while let Some(v) = try!(self.next()) {
-            init = f(init, v);
+            init = f(init, v)?;
         }
 
         Ok(init)
@@ -310,15 +323,12 @@ pub trait FallibleIterator {
         Ok(last)
     }
 
-    /// Returns an iterator which applies a transform `f` to the elements of the
-    /// underlying iterator.
-    ///
-    /// If your transform closure needs to be fallible, consider using the
-    /// [`and_then`](#method.and_then) method instead.
+    /// Returns an iterator which applies a fallible transform to the elements
+    /// of the underlying iterator.
     #[inline]
-    fn map<B, F>(self, f: F) -> Map<Self, F>
-        where F: FnMut(Self::Item) -> B,
-              Self: Sized
+    fn map<F, B>(self, f: F) -> Map<Self, F>
+        where Self: Sized,
+              F: FnMut(Self::Item) -> Result<B, Self::Error>
     {
         Map { it: self, f: f }
     }
@@ -354,20 +364,20 @@ pub trait FallibleIterator {
     }
 
     /// Returns the element of the iterator which gives the maximum value from
-    /// the function.
+    /// the function. The function may fail; such failures are returned to the caller.
     #[inline]
     fn max_by_key<B, F>(mut self, mut f: F) -> Result<Option<Self::Item>, Self::Error>
         where Self: Sized,
               B: Ord,
-              F: FnMut(&Self::Item) -> B
+              F: FnMut(&Self::Item) -> Result<B, Self::Error>
     {
         let mut max = match try!(self.next()) {
-            Some(v) => (f(&v), v),
+            Some(v) => (f(&v)?, v),
             None => return Ok(None),
         };
 
         while let Some(v) = try!(self.next()) {
-            let b = f(&v);
+            let b = f(&v)?;
             if max.0 < b {
                 max = (b, v);
             }
@@ -397,20 +407,20 @@ pub trait FallibleIterator {
     }
 
     /// Returns the element of the iterator which gives the minimum value from
-    /// the function.
+    /// the function. The function may fail; such failures are returned to the caller.
     #[inline]
     fn min_by_key<B, F>(mut self, mut f: F) -> Result<Option<Self::Item>, Self::Error>
         where Self: Sized,
               B: Ord,
-              F: FnMut(&Self::Item) -> B
+              F: FnMut(&Self::Item) -> Result<B, Self::Error>
     {
         let mut min = match try!(self.next()) {
-            Some(v) => (f(&v), v),
+            Some(v) => (f(&v)?, v),
             None => return Ok(None),
         };
 
         while let Some(v) = try!(self.next()) {
-            let b = f(&v);
+            let b = f(&v)?;
             if min.0 > b {
                 min = (b, v);
             }
@@ -444,15 +454,16 @@ pub trait FallibleIterator {
     }
 
     /// Returns the position of the first element of this iterator that matches
-    /// a predicate.
+    /// a predicate. The predicate may fail; such failures are returned to the
+    /// caller.
     #[inline]
     fn position<F>(&mut self, mut f: F) -> Result<Option<usize>, Self::Error>
         where Self: Sized,
-              F: FnMut(Self::Item) -> bool
+              F: FnMut(Self::Item) -> Result<bool, Self::Error>
     {
         let mut i = 0;
         while let Some(v) = try!(self.next()) {
-            if f(v) {
+            if f(v)? {
                 return Ok(Some(i));
             }
             i += 1;
@@ -864,12 +875,12 @@ impl<I> IntoFallibleIterator for I
 /// An iterator which applies a fallible transform to the elements of the
 /// underlying iterator.
 #[derive(Clone, Debug)]
-pub struct AndThen<T, F> {
+pub struct Map<T, F> {
     it: T,
     f: F,
 }
 
-impl<T, F, B> FallibleIterator for AndThen<T, F>
+impl<T, F, B> FallibleIterator for Map<T, F>
     where T: FallibleIterator,
           F: FnMut(T::Item) -> Result<B, T::Error>
 {
@@ -1097,7 +1108,7 @@ impl<I> FallibleIterator for Enumerate<I>
     }
 }
 
-/// An iterator which uses a predicate to determine which values of the
+/// An iterator which uses a fallible predicate to determine which values of the
 /// underlying iterator should be yielded.
 #[derive(Clone, Debug)]
 pub struct Filter<I, F> {
@@ -1107,7 +1118,7 @@ pub struct Filter<I, F> {
 
 impl<I, F> FallibleIterator for Filter<I, F>
     where I: FallibleIterator,
-          F: FnMut(&I::Item) -> bool
+          F: FnMut(&I::Item) -> Result<bool, I::Error>
 {
     type Item = I::Item;
     type Error = I::Error;
@@ -1115,7 +1126,7 @@ impl<I, F> FallibleIterator for Filter<I, F>
     #[inline]
     fn next(&mut self) -> Result<Option<I::Item>, I::Error> {
         while let Some(v) = try!(self.it.next()) {
-            if (self.f)(&v) {
+            if (self.f)(&v)? {
                 return Ok(Some(v));
             }
         }
@@ -1131,12 +1142,12 @@ impl<I, F> FallibleIterator for Filter<I, F>
 
 impl<I, F> DoubleEndedFallibleIterator for Filter<I, F>
     where I: DoubleEndedFallibleIterator,
-          F: FnMut(&I::Item) -> bool
+          F: FnMut(&I::Item) -> Result<bool, I::Error>
 {
     #[inline]
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
         while let Some(v) = try!(self.it.next_back()) {
-            if (self.f)(&v) {
+            if (self.f)(&v)? {
                 return Ok(Some(v));
             }
         }
@@ -1155,7 +1166,7 @@ pub struct FilterMap<I, F> {
 
 impl<B, I, F> FallibleIterator for FilterMap<I, F>
     where I: FallibleIterator,
-          F: FnMut(I::Item) -> Option<B>
+          F: FnMut(I::Item) -> Result<Option<B>, I::Error>
 {
     type Item = B;
     type Error = I::Error;
@@ -1163,7 +1174,7 @@ impl<B, I, F> FallibleIterator for FilterMap<I, F>
     #[inline]
     fn next(&mut self) -> Result<Option<B>, I::Error> {
         while let Some(v) = try!(self.it.next()) {
-            if let Some(v) = (self.f)(v) {
+            if let Some(v) = (self.f)(v)? {
                 return Ok(Some(v));
             }
         }
@@ -1179,12 +1190,12 @@ impl<B, I, F> FallibleIterator for FilterMap<I, F>
 
 impl<B, I, F> DoubleEndedFallibleIterator for FilterMap<I, F>
     where I: DoubleEndedFallibleIterator,
-          F: FnMut(I::Item) -> Option<B>
+          F: FnMut(I::Item) -> Result<Option<B>, I::Error>
 {
     #[inline]
     fn next_back(&mut self) -> Result<Option<B>, I::Error> {
         while let Some(v) = try!(self.it.next_back()) {
-            if let Some(v) = (self.f)(v) {
+            if let Some(v) = (self.f)(v)? {
                 return Ok(Some(v));
             }
         }
@@ -1272,47 +1283,6 @@ impl<I> DoubleEndedIterator for Iterator<I>
             Ok(None) => None,
             Err(e) => Some(Err(e)),
         }
-    }
-}
-
-/// An iterator which applies a transform to the elements of the underlying
-/// iterator.
-#[derive(Clone, Debug)]
-pub struct Map<I, F> {
-    it: I,
-    f: F,
-}
-
-impl<B, F, I> FallibleIterator for Map<I, F>
-    where I: FallibleIterator,
-          F: FnMut(I::Item) -> B
-{
-    type Item = B;
-    type Error = I::Error;
-
-    #[inline]
-    fn next(&mut self) -> Result<Option<B>, I::Error> {
-        self.it.next().map(|o| o.map(&mut self.f))
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.it.size_hint()
-    }
-
-    #[inline]
-    fn count(self) -> Result<usize, I::Error> {
-        self.it.count()
-    }
-}
-
-impl<B, F, I> DoubleEndedFallibleIterator for Map<I, F>
-    where I: DoubleEndedFallibleIterator,
-          F: FnMut(I::Item) -> B
-{
-    #[inline]
-    fn next_back(&mut self) -> Result<Option<B>, I::Error> {
-        self.it.next_back().map(|o| o.map(&mut self.f))
     }
 }
 
