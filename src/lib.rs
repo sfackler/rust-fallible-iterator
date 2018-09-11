@@ -132,6 +132,10 @@ pub trait FallibleIterator {
 
     /// Returns an iterator which applies a fallible transform to the elements
     /// of the underlying iterator.
+    ///
+    /// This is very much like the [`map`](#method.map) method, differing only
+    /// in the transforming closure's return type: `Result<B, ...>` instead of
+    /// just `B`.
     #[inline]
     fn and_then<F, B>(self, f: F) -> AndThen<Self, F>
         where Self: Sized,
@@ -306,8 +310,11 @@ pub trait FallibleIterator {
         Ok(last)
     }
 
-    /// Returns an iterator which applies a transform to the elements of the
+    /// Returns an iterator which applies a transform `f` to the elements of the
     /// underlying iterator.
+    ///
+    /// If your transform closure needs to be fallible, consider using the
+    /// [`and_then`](#method.and_then) method instead.
     #[inline]
     fn map<B, F>(self, f: F) -> Map<Self, F>
         where F: FnMut(Self::Item) -> B,
