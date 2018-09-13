@@ -902,6 +902,20 @@ impl<T, F, B> FallibleIterator for Map<T, F>
     }
 }
 
+impl<B, F, I> DoubleEndedFallibleIterator for Map<I, F>
+    where I: DoubleEndedFallibleIterator,
+          F: FnMut(I::Item) -> Result<B, I::Error>
+{
+    #[inline]
+    fn next_back(&mut self) -> Result<Option<B>, I::Error> {
+        match self.it.next_back() {
+            Ok(Some(v)) => Ok(Some(try!((self.f)(v)))),
+            Ok(None) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 enum ChainState {
     Both,
