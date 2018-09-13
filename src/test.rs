@@ -66,7 +66,8 @@ fn enumerate() {
 fn filter() {
     let it = convert(vec![0, 1, 2, 3].into_iter().map(Ok::<u32, ()>)).filter(|&x| x % 2 == 0);
 
-    assert_eq!(it.collect::<Vec<_>>().unwrap(), [0, 2]);
+    assert_eq!(it.clone().collect::<Vec<_>>().unwrap(), [0, 2]);
+    assert_eq!(it.rev().collect::<Vec<_>>().unwrap(), [2, 0]);
 }
 
 #[test]
@@ -74,13 +75,14 @@ fn filter_map() {
     let it = convert(vec![0, 1, 2, 3].into_iter().map(Ok::<u32, ()>))
         .filter_map(|x| {
             if x % 2 == 0 {
-                Some(x + 1)
+                Some(x + 10)
             } else {
                 None
             }
         });
 
-    assert_eq!(it.collect::<Vec<_>>().unwrap(), [1, 3]);
+    assert_eq!(it.clone().collect::<Vec<_>>().unwrap(), [10, 12]);
+    assert_eq!(it.rev().collect::<Vec<_>>().unwrap(), [12, 10]);
 }
 
 #[test]
@@ -98,9 +100,48 @@ fn fold() {
 }
 
 #[test]
+fn iterator() {
+    let it = convert("ab cd".chars().map(|c| {
+        if c.is_whitespace() {
+            Err(())
+        } else {
+            Ok(c)
+        }
+    }));
+
+    assert!(it.clone().count().is_err());
+    assert!(it.clone().rev().count().is_err());
+    assert_eq!(it.clone().iterator().count(), 5);
+    assert_eq!(it.clone().iterator().rev().count(), 5);
+}
+
+#[test]
 fn last() {
     let it = convert(vec![0, 1, 2, 3].into_iter().map(Ok::<u32, ()>));
     assert_eq!(it.last().unwrap(), Some(3));
+}
+
+#[test]
+fn map() {
+    let it = convert(vec![0, 1, 2, 3].into_iter().map(Ok::<u32, ()>));
+    let it = it.map(|n| 10-n);
+
+    assert_eq!(it.clone().collect::<Vec<_>>(), Ok(vec![10, 9, 8, 7]));
+    assert_eq!(it.rev().collect::<Vec<_>>(), Ok(vec![7, 8, 9, 10]));
+}
+
+#[test]
+fn map_err() {
+    let it = convert(vec![0, 1, 2, 3].into_iter().map(|n| {
+        if n % 2 == 0 {
+            Ok(n)
+        } else {
+            Err(n)
+        }
+    }));
+
+    assert_eq!(it.clone().collect::<Vec<_>>(), Err(1));
+    assert_eq!(it.rev().collect::<Vec<_>>(), Err(3));
 }
 
 #[test]
