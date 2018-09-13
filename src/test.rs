@@ -4,32 +4,16 @@ use super::{convert, FallibleIterator, Vec};
 
 #[test]
 fn all() {
-    assert!(convert([0, 1, 2, 3].iter().map(Ok::<&u32, ()>)).all(|&i| i < 4).unwrap());
-    assert!(!convert([0, 1, 2, 4].iter().map(Ok::<&u32, ()>)).all(|&i| i < 4).unwrap());
-}
-
-#[test]
-fn and_then() {
-    let it = convert(vec![0, 1, 2, 3, 4].into_iter().map(Ok::<u32, ()>)).and_then(|n| Ok(n * 2));
-    assert_eq!(it.collect::<Vec<_>>().unwrap(), [0, 2, 4, 6, 8]);
-
-    let mut it = convert(vec![0, 1, 2, 3, 4].into_iter().map(Ok::<u32, ()>))
-        .and_then(|n| {
-            if n == 2 {
-                Err(())
-            } else {
-                Ok(n * 2)
-            }
-        });
-    assert_eq!(it.next().unwrap().unwrap(), 0);
-    assert_eq!(it.next().unwrap().unwrap(), 2);
-    assert_eq!(it.next(), Err(()));
+    assert!(convert([0, 1, 2, 3].iter().map(Ok::<&u32, ()>)).all(|&i| Ok(i < 4)).unwrap());
+    assert!(!convert([0, 1, 2, 4].iter().map(Ok::<&u32, ()>)).all(|&i| Ok(i < 4)).unwrap());
+    assert!(convert([0, 1, 2, 4].iter().map(Ok::<&u32, ()>)).all(|_| Err(())).is_err());
 }
 
 #[test]
 fn any() {
-    assert!(convert([0, 1, 2, 3].iter().map(Ok::<&u32, ()>)).any(|&i| i == 3).unwrap());
-    assert!(!convert([0, 1, 2, 4].iter().map(Ok::<&u32, ()>)).any(|&i| i == 3).unwrap());
+    assert!(convert([0, 1, 2, 3].iter().map(Ok::<&u32, ()>)).any(|&i| Ok(i == 3)).unwrap());
+    assert!(!convert([0, 1, 2, 4].iter().map(Ok::<&u32, ()>)).any(|&i| Ok(i == 3)).unwrap());
+    assert!(convert([0, 1, 2, 4].iter().map(Ok::<&u32, ()>)).any(|_| Err(())).is_err());
 }
 
 #[test]
@@ -64,39 +48,85 @@ fn enumerate() {
 
 #[test]
 fn filter() {
-    let it = convert(vec![0, 1, 2, 3].into_iter().map(Ok::<u32, ()>)).filter(|&x| x % 2 == 0);
+    let it = convert(vec![0, 1, 2, 3].into_iter().map(Ok::<u32, u32>));
+    let it = it.filter(|&x| {
+        if x % 2 == 0 {
+            Ok(x % 3 == 0)
+        } else {
+            Err(x)
+        }
+    });
 
-    assert_eq!(it.clone().collect::<Vec<_>>().unwrap(), [0, 2]);
-    assert_eq!(it.rev().collect::<Vec<_>>().unwrap(), [2, 0]);
+    assert_eq!(it.clone().collect::<Vec<_>>(), Err(1));
+    assert_eq!(it.rev().collect::<Vec<_>>(), Err(3));
+
+    let it = convert(vec![0, 2, 4, 6].into_iter().map(Ok::<u32, u32>));
+    let it = it.filter(|&x| {
+        if x % 2 == 0 {
+            Ok(x % 3 == 0)
+        } else {
+            Err(x)
+        }
+    });
+
+    assert_eq!(it.clone().collect::<Vec<_>>(), Ok(vec![0, 6]));
+    assert_eq!(it.rev().collect::<Vec<_>>(), Ok(vec![6, 0]))
 }
 
 #[test]
 fn filter_map() {
-    let it = convert(vec![0, 1, 2, 3].into_iter().map(Ok::<u32, ()>))
-        .filter_map(|x| {
-            if x % 2 == 0 {
-                Some(x + 10)
-            } else {
-                None
-            }
-        });
+    fn twos_and_threes(x: u32) -> Result<Option<u32>, u32> {
+        if x % 2 == 0 {
+            Ok(Some(x + 10))
+        } else if x % 3 == 0 {
+            Ok(None)
+        } else {
+            Err(x)
+        }
+    }
 
-    assert_eq!(it.clone().collect::<Vec<_>>().unwrap(), [10, 12]);
-    assert_eq!(it.rev().collect::<Vec<_>>().unwrap(), [12, 10]);
+    let it = convert(vec![0, 1, 2, 3, 4, 5, 6].into_iter().map(Ok::<u32, u32>))
+        .filter_map(twos_and_threes);
+
+    assert_eq!(it.clone().collect::<Vec<_>>(), Err(1));
+    assert_eq!(it.rev().collect::<Vec<_>>(), Err(5));
+
+    let it = convert(vec![0, 2, 3, 4, 6].into_iter().map(Ok::<u32, u32>))
+        .filter_map(twos_and_threes);
+
+    assert_eq!(it.clone().collect::<Vec<_>>(), Ok(vec![10, 12, 14, 16]));
+    assert_eq!(it.rev().collect::<Vec<_>>(), Ok(vec![16, 14, 12, 10]));
 }
 
 #[test]
 fn find() {
-    let mut it = convert(vec![0, 1, 2, 3].into_iter().map(Ok::<u32, ()>));
+    let mut it = convert(vec![0, 1, 2, 3].into_iter().map(Ok::<u32, u32>));
 
-    assert_eq!(it.find(|x| x % 2 == 1).unwrap(), Some(1));
-    assert_eq!(it.next().unwrap(), Some(2));
+    assert_eq!(it.find(|x| Ok(x % 2 == 1)), Ok(Some(1)));
+    assert_eq!(it.next(), Ok(Some(2)));
+
+    let it = convert(vec![0, 1, 2, 3].into_iter().map(Ok::<u32, u32>));
+    assert_eq!(it.clone().find(|&x| if x == 2 { Err(29) } else { Ok(false) }), Err(29));
+    assert_eq!(it.clone().find(|&x| if x == 2 { Err(29) } else { Ok(true) }), Ok(Some(0)));
+    assert_eq!(it.clone().rev().find(|&x| if x == 2 { Err(29) } else { Ok(false) }), Err(29));
+    assert_eq!(it.rev().find(|&x| if x == 2 { Err(29) } else { Ok(true) }), Ok(Some(3)));
 }
 
 #[test]
 fn fold() {
-    let it = convert(vec![0, 1, 2, 3].into_iter().map(Ok::<u32, ()>));
-    assert_eq!(it.fold(0, |a, b| a + b).unwrap(), 6);
+    fn add_smol(a: u32, b: u32) -> Result<u32, u32> {
+        if b <= 2 {
+            Ok(a + b)
+        } else {
+            Err(b)
+        }
+    }
+
+    let it = convert(vec![0, 1, 3, 2].into_iter().map(Ok::<u32, u32>));
+    assert_eq!(it.fold(0, add_smol), Err(3));
+
+    let it = convert(vec![0, 1, 2, 1].into_iter().map(Ok::<u32, u32>));
+    assert_eq!(it.fold(0, add_smol), Ok(4));
 }
 
 #[test]
@@ -123,11 +153,32 @@ fn last() {
 
 #[test]
 fn map() {
-    let it = convert(vec![0, 1, 2, 3].into_iter().map(Ok::<u32, ()>));
-    let it = it.map(|n| 10-n);
+    let it = convert(vec![0, 1, 2, 3, 4].into_iter().map(Ok::<u32, ()>)).map(|n| Ok(n * 2));
+    assert_eq!(it.clone().collect::<Vec<_>>().unwrap(), [0, 2, 4, 6, 8]);
+    assert_eq!(it.rev().collect::<Vec<_>>().unwrap(), [8, 6, 4, 2, 0]);
 
-    assert_eq!(it.clone().collect::<Vec<_>>(), Ok(vec![10, 9, 8, 7]));
-    assert_eq!(it.rev().collect::<Vec<_>>(), Ok(vec![7, 8, 9, 10]));
+    let it = convert(vec![0, 1, 2, 3, 4].into_iter().map(Ok::<u32, ()>))
+        .map(|n| {
+            if n == 2 {
+                Err(())
+            } else {
+                Ok(n * 2)
+            }
+        });
+
+    {
+        let mut it = it.clone();
+        assert_eq!(it.next(), Ok(Some(0)));
+        assert_eq!(it.next(), Ok(Some(2)));
+        assert_eq!(it.next(), Err(()));
+    }
+
+    {
+        let mut it = it.rev();
+        assert_eq!(it.next(), Ok(Some(8)));
+        assert_eq!(it.next(), Ok(Some(6)));
+        assert_eq!(it.next(), Err(()));
+    }
 }
 
 #[test]
@@ -152,8 +203,11 @@ fn max() {
 
 #[test]
 fn max_by_key() {
-    let it = convert(vec![0, 3, 1, -10].into_iter().map(Ok::<i32, ()>));
-    assert_eq!(it.max_by_key(|&i| -i).unwrap(), Some(-10));
+    let it = convert(vec![0, 3, 1, -10].into_iter().map(Ok::<i32, i32>));
+    assert_eq!(it.clone().max_by_key(|&i| Ok(-i)), Ok(Some(-10)));
+    // Exercise failure both on the first item, and later.
+    assert_eq!(it.clone().max_by_key(|&i| Err::<i32, _>(i)), Err(0));
+    assert_eq!(it.clone().max_by_key(|&i| if i > 0 { Err(i) } else { Ok(-i) }), Err(3));
 }
 
 #[test]
@@ -164,8 +218,11 @@ fn min() {
 
 #[test]
 fn min_by_key() {
-    let it = convert(vec![0, 3, 1, -10].into_iter().map(Ok::<i32, ()>));
-    assert_eq!(it.min_by_key(|&i| -i).unwrap(), Some(3));
+    let it = convert(vec![0, 3, 1, -10].into_iter().map(Ok::<i32, i32>));
+    assert_eq!(it.clone().min_by_key(|&i| Ok(-i)), Ok(Some(3)));
+    // Exercise failure both on the first item, and later.
+    assert_eq!(it.clone().min_by_key(|&i| Err::<i32, _>(i)), Err(0));
+    assert_eq!(it.clone().min_by_key(|&i| if i > 0 { Err(i) } else { Ok(-i) }), Err(3));
 }
 
 #[test]
@@ -190,9 +247,13 @@ fn peekable() {
 #[test]
 fn position() {
     let mut it = convert(vec![1, 2, 3, 4].into_iter().map(Ok::<i32, ()>));
-    assert_eq!(it.position(|n| n == 2).unwrap(), Some(1));
-    assert_eq!(it.position(|n| n == 3).unwrap(), Some(0));
-    assert_eq!(it.position(|n| n == 5).unwrap(), None);
+    assert_eq!(it.position(|n| Ok(n == 2)).unwrap(), Some(1));
+    assert_eq!(it.position(|n| Ok(n == 3)).unwrap(), Some(0));
+    assert_eq!(it.position(|n| Ok(n == 5)).unwrap(), None);
+
+    let it = convert(vec![1, 2, 3, 4].into_iter().map(Ok::<i32, i32>));
+    assert_eq!(it.clone().position(|n| if n == 3 { Err(42) } else { Ok(n == 2) }), Ok(Some(1)));
+    assert_eq!(it.clone().position(|n| if n == 3 { Err(42) } else { Ok(n == 4) }), Err(42));
 }
 
 #[test]
