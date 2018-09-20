@@ -9,7 +9,7 @@
 //!
 //! ```ignore
 //! for line in reader.lines() {
-//!     let line = try!(line);
+//!     let line = line?;
 //!     // work with line
 //! }
 //! ```
@@ -38,7 +38,7 @@
 //! loop syntax, but `while let` loops offer a similar level of ergonomics:
 //!
 //! ```ignore
-//! while let Some(item) = try!(iter.next()) {
+//! while let Some(item) = iter.next()? {
 //!     // work with item
 //! }
 //! ```
@@ -144,7 +144,7 @@ pub trait FallibleIterator {
         Self: Sized,
         F: FnMut(Self::Item) -> Result<bool, Self::Error>,
     {
-        while let Some(v) = try!(self.next()) {
+        while let Some(v) = self.next()? {
             if !f(v)? {
                 return Ok(false);
             }
@@ -161,7 +161,7 @@ pub trait FallibleIterator {
         Self: Sized,
         F: FnMut(Self::Item) -> Result<bool, Self::Error>,
     {
-        while let Some(v) = try!(self.next()) {
+        while let Some(v) = self.next()? {
             if f(v)? {
                 return Ok(true);
             }
@@ -214,7 +214,7 @@ pub trait FallibleIterator {
         Self: Sized,
     {
         let mut count = 0;
-        while let Some(_) = try!(self.next()) {
+        while let Some(_) = self.next()? {
             count += 1;
         }
 
@@ -274,7 +274,7 @@ pub trait FallibleIterator {
         Self: Sized,
         F: FnMut(&Self::Item) -> Result<bool, Self::Error>,
     {
-        while let Some(v) = try!(self.next()) {
+        while let Some(v) = self.next()? {
             if f(&v)? {
                 return Ok(Some(v));
             }
@@ -309,7 +309,7 @@ pub trait FallibleIterator {
         Self: Sized,
         F: FnMut(B, Self::Item) -> Result<B, Self::Error>,
     {
-        while let Some(v) = try!(self.next()) {
+        while let Some(v) = self.next()? {
             init = f(init, v)?;
         }
 
@@ -332,7 +332,7 @@ pub trait FallibleIterator {
         Self: Sized,
     {
         let mut last = None;
-        while let Some(e) = try!(self.next()) {
+        while let Some(e) = self.next()? {
             last = Some(e);
         }
         Ok(last)
@@ -367,12 +367,12 @@ pub trait FallibleIterator {
         Self: Sized,
         Self::Item: Ord,
     {
-        let mut max = match try!(self.next()) {
+        let mut max = match self.next()? {
             Some(v) => v,
             None => return Ok(None),
         };
 
-        while let Some(v) = try!(self.next()) {
+        while let Some(v) = self.next()? {
             if max < v {
                 max = v;
             }
@@ -390,12 +390,12 @@ pub trait FallibleIterator {
         B: Ord,
         F: FnMut(&Self::Item) -> Result<B, Self::Error>,
     {
-        let mut max = match try!(self.next()) {
+        let mut max = match self.next()? {
             Some(v) => (f(&v)?, v),
             None => return Ok(None),
         };
 
-        while let Some(v) = try!(self.next()) {
+        while let Some(v) = self.next()? {
             let b = f(&v)?;
             if max.0 < b {
                 max = (b, v);
@@ -412,12 +412,12 @@ pub trait FallibleIterator {
         Self: Sized,
         Self::Item: Ord,
     {
-        let mut min = match try!(self.next()) {
+        let mut min = match self.next()? {
             Some(v) => v,
             None => return Ok(None),
         };
 
-        while let Some(v) = try!(self.next()) {
+        while let Some(v) = self.next()? {
             if min > v {
                 min = v;
             }
@@ -435,12 +435,12 @@ pub trait FallibleIterator {
         B: Ord,
         F: FnMut(&Self::Item) -> Result<B, Self::Error>,
     {
-        let mut min = match try!(self.next()) {
+        let mut min = match self.next()? {
             Some(v) => (f(&v)?, v),
             None => return Ok(None),
         };
 
-        while let Some(v) = try!(self.next()) {
+        while let Some(v) = self.next()? {
             let b = f(&v)?;
             if min.0 > b {
                 min = (b, v);
@@ -453,7 +453,7 @@ pub trait FallibleIterator {
     /// Returns the `n`th element of the iterator.
     #[inline]
     fn nth(&mut self, mut n: usize) -> Result<Option<Self::Item>, Self::Error> {
-        while let Some(e) = try!(self.next()) {
+        while let Some(e) = self.next()? {
             if n == 0 {
                 return Ok(Some(e));
             }
@@ -485,7 +485,7 @@ pub trait FallibleIterator {
         F: FnMut(Self::Item) -> Result<bool, Self::Error>,
     {
         let mut i = 0;
-        while let Some(v) = try!(self.next()) {
+        while let Some(v) = self.next()? {
             if f(v)? {
                 return Ok(Some(i));
             }
@@ -540,7 +540,7 @@ pub trait FallibleIterator {
         let mut other = other.into_fallible_iterator();
 
         loop {
-            match (try!(self.next()), try!(other.next())) {
+            match (self.next()?, other.next()?) {
                 (None, None) => return Ok(Ordering::Equal),
                 (None, _) => return Ok(Ordering::Less),
                 (_, None) => return Ok(Ordering::Greater),
@@ -564,7 +564,7 @@ pub trait FallibleIterator {
         let mut other = other.into_fallible_iterator();
 
         loop {
-            match (try!(self.next()), try!(other.next())) {
+            match (self.next()?, other.next()?) {
                 (None, None) => return Ok(Some(Ordering::Equal)),
                 (None, _) => return Ok(Some(Ordering::Less)),
                 (_, None) => return Ok(Some(Ordering::Greater)),
@@ -588,7 +588,7 @@ pub trait FallibleIterator {
         let mut other = other.into_fallible_iterator();
 
         loop {
-            match (try!(self.next()), try!(other.next())) {
+            match (self.next()?, other.next()?) {
                 (None, None) => return Ok(true),
                 (None, _) | (_, None) => return Ok(false),
                 (Some(x), Some(y)) => {
@@ -612,7 +612,7 @@ pub trait FallibleIterator {
         let mut other = other.into_fallible_iterator();
 
         loop {
-            match (try!(self.next()), try!(other.next())) {
+            match (self.next()?, other.next()?) {
                 (None, None) => return Ok(false),
                 (None, _) | (_, None) => return Ok(true),
                 (Some(x), Some(y)) => {
@@ -636,7 +636,7 @@ pub trait FallibleIterator {
         let mut other = other.into_fallible_iterator();
 
         loop {
-            match (try!(self.next()), try!(other.next())) {
+            match (self.next()?, other.next()?) {
                 (None, None) => return Ok(false),
                 (None, _) => return Ok(true),
                 (_, None) => return Ok(false),
@@ -662,7 +662,7 @@ pub trait FallibleIterator {
         let mut other = other.into_fallible_iterator();
 
         loop {
-            match (try!(self.next()), try!(other.next())) {
+            match (self.next()?, other.next()?) {
                 (None, None) => return Ok(true),
                 (None, _) => return Ok(true),
                 (_, None) => return Ok(false),
@@ -688,7 +688,7 @@ pub trait FallibleIterator {
         let mut other = other.into_fallible_iterator();
 
         loop {
-            match (try!(self.next()), try!(other.next())) {
+            match (self.next()?, other.next()?) {
                 (None, None) => return Ok(false),
                 (None, _) => return Ok(false),
                 (_, None) => return Ok(true),
@@ -714,7 +714,7 @@ pub trait FallibleIterator {
         let mut other = other.into_fallible_iterator();
 
         loop {
-            match (try!(self.next()), try!(other.next())) {
+            match (self.next()?, other.next()?) {
                 (None, None) => return Ok(true),
                 (None, _) => return Ok(false),
                 (_, None) => return Ok(true),
@@ -797,7 +797,7 @@ impl<T> FromFallibleIterator<T> for Vec<T> {
         I: FallibleIterator<Item = T>,
     {
         let mut vec = Vec::with_capacity(it.size_hint().0);
-        while let Some(v) = try!(it.next()) {
+        while let Some(v) = it.next()? {
             vec.push(v);
         }
         Ok(vec)
@@ -815,7 +815,7 @@ where
         I: FallibleIterator<Item = T>,
     {
         let mut set = HashSet::with_capacity(it.size_hint().0);
-        while let Some(v) = try!(it.next()) {
+        while let Some(v) = it.next()? {
             set.insert(v);
         }
         Ok(set)
@@ -833,7 +833,7 @@ where
         I: FallibleIterator<Item = (K, V)>,
     {
         let mut map = HashMap::with_capacity(it.size_hint().0);
-        while let Some((k, v)) = try!(it.next()) {
+        while let Some((k, v)) = it.next()? {
             map.insert(k, v);
         }
         Ok(map)
@@ -851,7 +851,7 @@ where
         I: FallibleIterator<Item = T>,
     {
         let mut set = BTreeSet::new();
-        while let Some(v) = try!(it.next()) {
+        while let Some(v) = it.next()? {
             set.insert(v);
         }
         Ok(set)
@@ -869,7 +869,7 @@ where
         I: FallibleIterator<Item = (K, V)>,
     {
         let mut map = BTreeMap::new();
-        while let Some((k, v)) = try!(it.next()) {
+        while let Some((k, v)) = it.next()? {
             map.insert(k, v);
         }
         Ok(map)
@@ -924,7 +924,7 @@ where
     #[inline]
     fn next(&mut self) -> Result<Option<B>, T::Error> {
         match self.it.next() {
-            Ok(Some(v)) => Ok(Some(try!((self.f)(v)))),
+            Ok(Some(v)) => Ok(Some((self.f)(v)?)),
             Ok(None) => Ok(None),
             Err(e) => Err(e),
         }
@@ -944,7 +944,7 @@ where
     #[inline]
     fn next_back(&mut self) -> Result<Option<B>, I::Error> {
         match self.it.next_back() {
-            Ok(Some(v)) => Ok(Some(try!((self.f)(v)))),
+            Ok(Some(v)) => Ok(Some((self.f)(v)?)),
             Ok(None) => Ok(None),
             Err(e) => Err(e),
         }
@@ -977,7 +977,7 @@ where
     #[inline]
     fn next(&mut self) -> Result<Option<T::Item>, T::Error> {
         match self.state {
-            ChainState::Both => match try!(self.front.next()) {
+            ChainState::Both => match self.front.next()? {
                 Some(e) => Ok(Some(e)),
                 None => {
                     self.state = ChainState::Back;
@@ -1006,7 +1006,7 @@ where
     #[inline]
     fn count(self) -> Result<usize, T::Error> {
         match self.state {
-            ChainState::Both => Ok(try!(self.front.count()) + try!(self.back.count())),
+            ChainState::Both => Ok(self.front.count()? + self.back.count()?),
             ChainState::Front => self.front.count(),
             ChainState::Back => self.back.count(),
         }
@@ -1021,7 +1021,7 @@ where
     #[inline]
     fn next_back(&mut self) -> Result<Option<T::Item>, T::Error> {
         match self.state {
-            ChainState::Both => match try!(self.back.next_back()) {
+            ChainState::Both => match self.back.next_back()? {
                 Some(e) => Ok(Some(e)),
                 None => {
                     self.state = ChainState::Front;
@@ -1177,7 +1177,7 @@ where
 
     #[inline]
     fn next(&mut self) -> Result<Option<I::Item>, I::Error> {
-        while let Some(v) = try!(self.it.next()) {
+        while let Some(v) = self.it.next()? {
             if (self.f)(&v)? {
                 return Ok(Some(v));
             }
@@ -1199,7 +1199,7 @@ where
 {
     #[inline]
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
-        while let Some(v) = try!(self.it.next_back()) {
+        while let Some(v) = self.it.next_back()? {
             if (self.f)(&v)? {
                 return Ok(Some(v));
             }
@@ -1227,7 +1227,7 @@ where
 
     #[inline]
     fn next(&mut self) -> Result<Option<B>, I::Error> {
-        while let Some(v) = try!(self.it.next()) {
+        while let Some(v) = self.it.next()? {
             if let Some(v) = (self.f)(v)? {
                 return Ok(Some(v));
             }
@@ -1249,7 +1249,7 @@ where
 {
     #[inline]
     fn next_back(&mut self) -> Result<Option<B>, I::Error> {
-        while let Some(v) = try!(self.it.next_back()) {
+        while let Some(v) = self.it.next_back()? {
             if let Some(v) = (self.f)(v)? {
                 return Ok(Some(v));
             }
@@ -1402,7 +1402,7 @@ where
     #[inline]
     pub fn peek(&mut self) -> Result<Option<&I::Item>, I::Error> {
         if self.next.is_none() {
-            self.next = try!(self.it.next());
+            self.next = self.it.next()?;
         }
 
         Ok(self.next.as_ref())
@@ -1527,7 +1527,7 @@ where
 
     #[inline]
     fn next(&mut self) -> Result<Option<(T::Item, U::Item)>, T::Error> {
-        match (try!(self.0.next()), try!(self.1.next())) {
+        match (self.0.next()?, self.1.next()?) {
             (Some(a), Some(b)) => Ok(Some((a, b))),
             _ => Ok(None),
         }
