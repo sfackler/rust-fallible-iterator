@@ -136,6 +136,198 @@ pub trait FallibleIterator {
         (0, None)
     }
 
+    /// Consumes the iterator, returning the number of remaining items.
+    #[inline]
+    fn count(mut self) -> Result<usize, Self::Error>
+    where
+        Self: Sized,
+    {
+        let mut count = 0;
+        while let Some(_) = self.next()? {
+            count += 1;
+        }
+
+        Ok(count)
+    }
+
+    /// Returns the last element of the iterator.
+    #[inline]
+    fn last(mut self) -> Result<Option<Self::Item>, Self::Error>
+    where
+        Self: Sized,
+    {
+        let mut last = None;
+        while let Some(e) = self.next()? {
+            last = Some(e);
+        }
+        Ok(last)
+    }
+
+    /// Returns the `n`th element of the iterator.
+    #[inline]
+    fn nth(&mut self, mut n: usize) -> Result<Option<Self::Item>, Self::Error> {
+        while let Some(e) = self.next()? {
+            if n == 0 {
+                return Ok(Some(e));
+            }
+            n -= 1;
+        }
+        Ok(None)
+    }
+
+    /// Returns an iterator which yields the elements of this iterator followed
+    /// by another.
+    #[inline]
+    fn chain<I>(self, it: I) -> Chain<Self, I>
+    where
+        I: IntoFallibleIterator<Item = Self::Item, Error = Self::Error>,
+        Self: Sized,
+    {
+        Chain {
+            front: self,
+            back: it,
+            state: ChainState::Both,
+        }
+    }
+
+    /// Returns an iterator that yields pairs of this iterator's and another
+    /// iterator's values.
+    #[inline]
+    fn zip<I>(self, o: I) -> Zip<Self, I::IntoIter>
+    where
+        Self: Sized,
+        I: IntoFallibleIterator<Error = Self::Error>,
+    {
+        Zip(self, o.into_fallible_iterator())
+    }
+
+    /// Returns an iterator which applies a fallible transform to the elements
+    /// of the underlying iterator.
+    #[inline]
+    fn map<F, B>(self, f: F) -> Map<Self, F>
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> Result<B, Self::Error>,
+    {
+        Map { it: self, f: f }
+    }
+
+    /// Returns an iterator which uses a predicate to determine which values
+    /// should be yielded. The predicate may fail; such failures are passed to
+    /// the caller.
+    #[inline]
+    fn filter<F>(self, f: F) -> Filter<Self, F>
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item) -> Result<bool, Self::Error>,
+    {
+        Filter { it: self, f: f }
+    }
+
+    /// Returns an iterator which both filters and maps. The closure may fail;
+    /// such failures are passed along to the consumer.
+    #[inline]
+    fn filter_map<B, F>(self, f: F) -> FilterMap<Self, F>
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> Result<Option<B>, Self::Error>,
+    {
+        FilterMap { it: self, f: f }
+    }
+
+    /// Returns an iterator which yields the current iteration count as well
+    /// as the value.
+    #[inline]
+    fn enumerate(self) -> Enumerate<Self>
+    where
+        Self: Sized,
+    {
+        Enumerate { it: self, n: 0 }
+    }
+
+    /// Returns an iterator that can peek at the next element without consuming
+    /// it.
+    #[inline]
+    fn peekable(self) -> Peekable<Self>
+    where
+        Self: Sized,
+    {
+        Peekable {
+            it: self,
+            next: None,
+        }
+    }
+
+    /// Returns an iterator that yields only the first `n` values of this
+    /// iterator.
+    #[inline]
+    fn take(self, n: usize) -> Take<Self>
+    where
+        Self: Sized,
+    {
+        Take {
+            it: self,
+            remaining: n,
+        }
+    }
+
+    /// Returns an iterator which yields this iterator's elements and ends after
+    /// the first `Ok(None)`.
+    ///
+    /// The behavior of calling `next` after it has previously returned
+    /// `Ok(None)` is normally unspecified. The iterator returned by this method
+    /// guarantees that `Ok(None)` will always be returned.
+    #[inline]
+    fn fuse(self) -> Fuse<Self>
+    where
+        Self: Sized,
+    {
+        Fuse {
+            it: self,
+            done: false,
+        }
+    }
+
+    /// Borrow an iterator rather than consuming it.
+    ///
+    /// This is useful to allow the use of iterator adaptors that would
+    /// otherwise consume the value.
+    #[inline]
+    fn by_ref(&mut self) -> &mut Self
+    where
+        Self: Sized,
+    {
+        self
+    }
+
+    /// Transforms the iterator into a collection.
+    ///
+    /// An `Err` will be returned if any invocation of `next` returns `Err`.
+    #[inline]
+    fn collect<T>(self) -> Result<T, Self::Error>
+    where
+        T: FromFallibleIterator<Self::Item>,
+        Self: Sized,
+    {
+        T::from_fallible_iterator(self)
+    }
+
+    /// Applies a function over the elements of the iterator, producing a single
+    /// final value. The function may fail; such failures are returned to the
+    /// caller.
+    #[inline]
+    fn fold<B, F>(mut self, mut init: B, mut f: F) -> Result<B, Self::Error>
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> Result<B, Self::Error>,
+    {
+        while let Some(v) = self.next()? {
+            init = f(init, v)?;
+        }
+
+        Ok(init)
+    }
+
     /// Determines if all elements of this iterator match a predicate.
     /// The predicate may fail; such failures are passed to the caller.
     #[inline]
@@ -170,102 +362,6 @@ pub trait FallibleIterator {
         Ok(false)
     }
 
-    /// Borrow an iterator rather than consuming it.
-    ///
-    /// This is useful to allow the use of iterator adaptors that would
-    /// otherwise consume the value.
-    #[inline]
-    fn by_ref(&mut self) -> &mut Self
-    where
-        Self: Sized,
-    {
-        self
-    }
-
-    /// Returns an iterator which yields the elements of this iterator followed
-    /// by another.
-    #[inline]
-    fn chain<I>(self, it: I) -> Chain<Self, I>
-    where
-        I: IntoFallibleIterator<Item = Self::Item, Error = Self::Error>,
-        Self: Sized,
-    {
-        Chain {
-            front: self,
-            back: it,
-            state: ChainState::Both,
-        }
-    }
-
-    /// Returns an iterator which clones all of its elements.
-    #[inline]
-    fn cloned<'a, T>(self) -> Cloned<Self>
-    where
-        Self: Sized + FallibleIterator<Item = &'a T>,
-        T: 'a + Clone,
-    {
-        Cloned(self)
-    }
-
-    /// Consumes the iterator, returning the number of remaining items.
-    #[inline]
-    fn count(mut self) -> Result<usize, Self::Error>
-    where
-        Self: Sized,
-    {
-        let mut count = 0;
-        while let Some(_) = self.next()? {
-            count += 1;
-        }
-
-        Ok(count)
-    }
-
-    /// Transforms the iterator into a collection.
-    ///
-    /// An `Err` will be returned if any invocation of `next` returns `Err`.
-    #[inline]
-    fn collect<T>(self) -> Result<T, Self::Error>
-    where
-        T: FromFallibleIterator<Self::Item>,
-        Self: Sized,
-    {
-        T::from_fallible_iterator(self)
-    }
-
-    /// Returns an iterator which yields the current iteration count as well
-    /// as the value.
-    #[inline]
-    fn enumerate(self) -> Enumerate<Self>
-    where
-        Self: Sized,
-    {
-        Enumerate { it: self, n: 0 }
-    }
-
-    /// Returns an iterator which uses a predicate to determine which values
-    /// should be yielded. The predicate may fail; such failures are passed to
-    /// the caller.
-    #[inline]
-    fn filter<F>(self, f: F) -> Filter<Self, F>
-    where
-        Self: Sized,
-        F: FnMut(&Self::Item) -> Result<bool, Self::Error>,
-    {
-        Filter { it: self, f: f }
-    }
-
-    /// Returns an iterator which both filters and maps. The closure may fail;
-    /// such failures are passed along to the consumer.
-    #[inline]
-    fn filter_map<B, F>(self, f: F) -> FilterMap<Self, F>
-    where
-        Self: Sized,
-        F: FnMut(Self::Item) -> Result<Option<B>, Self::Error>,
-    {
-        FilterMap { it: self, f: f }
-    }
-
     /// Returns the first element of the iterator that matches a predicate.
     /// The predicate may fail; such failures are passed along to the caller.
     #[inline]
@@ -283,81 +379,23 @@ pub trait FallibleIterator {
         Ok(None)
     }
 
-    /// Returns an iterator which yields this iterator's elements and ends after
-    /// the first `Ok(None)`.
-    ///
-    /// The behavior of calling `next` after it has previously returned
-    /// `Ok(None)` is normally unspecified. The iterator returned by this method
-    /// guarantees that `Ok(None)` will always be returned.
-    #[inline]
-    fn fuse(self) -> Fuse<Self>
-    where
-        Self: Sized,
-    {
-        Fuse {
-            it: self,
-            done: false,
-        }
-    }
-
-    /// Applies a function over the elements of the iterator, producing a single
-    /// final value. The function may fail; such failures are returned to the
+    /// Returns the position of the first element of this iterator that matches
+    /// a predicate. The predicate may fail; such failures are returned to the
     /// caller.
     #[inline]
-    fn fold<B, F>(mut self, mut init: B, mut f: F) -> Result<B, Self::Error>
+    fn position<F>(&mut self, mut f: F) -> Result<Option<usize>, Self::Error>
     where
         Self: Sized,
-        F: FnMut(B, Self::Item) -> Result<B, Self::Error>,
+        F: FnMut(Self::Item) -> Result<bool, Self::Error>,
     {
+        let mut i = 0;
         while let Some(v) = self.next()? {
-            init = f(init, v)?;
+            if f(v)? {
+                return Ok(Some(i));
+            }
+            i += 1;
         }
-
-        Ok(init)
-    }
-
-    /// Returns a normal (non-fallible) iterator over `Result<Item, Error>`.
-    #[inline]
-    fn iterator(self) -> Iterator<Self>
-    where
-        Self: Sized,
-    {
-        Iterator(self)
-    }
-
-    /// Returns the last element of the iterator.
-    #[inline]
-    fn last(mut self) -> Result<Option<Self::Item>, Self::Error>
-    where
-        Self: Sized,
-    {
-        let mut last = None;
-        while let Some(e) = self.next()? {
-            last = Some(e);
-        }
-        Ok(last)
-    }
-
-    /// Returns an iterator which applies a fallible transform to the elements
-    /// of the underlying iterator.
-    #[inline]
-    fn map<F, B>(self, f: F) -> Map<Self, F>
-    where
-        Self: Sized,
-        F: FnMut(Self::Item) -> Result<B, Self::Error>,
-    {
-        Map { it: self, f: f }
-    }
-
-    /// Returns an iterator which applies a transform to the errors of the
-    /// underlying iterator.
-    #[inline]
-    fn map_err<B, F>(self, f: F) -> MapErr<Self, F>
-    where
-        F: FnMut(Self::Error) -> B,
-        Self: Sized,
-    {
-        MapErr { it: self, f: f }
+        Ok(None)
     }
 
     /// Returns the maximal element of the iterator.
@@ -379,6 +417,27 @@ pub trait FallibleIterator {
         }
 
         Ok(Some(max))
+    }
+
+    /// Returns the minimal element of the iterator.
+    #[inline]
+    fn min(mut self) -> Result<Option<Self::Item>, Self::Error>
+    where
+        Self: Sized,
+        Self::Item: Ord,
+    {
+        let mut min = match self.next()? {
+            Some(v) => v,
+            None => return Ok(None),
+        };
+
+        while let Some(v) = self.next()? {
+            if min > v {
+                min = v;
+            }
+        }
+
+        Ok(Some(min))
     }
 
     /// Returns the element of the iterator which gives the maximum value from
@@ -405,27 +464,6 @@ pub trait FallibleIterator {
         Ok(Some(max.1))
     }
 
-    /// Returns the minimal element of the iterator.
-    #[inline]
-    fn min(mut self) -> Result<Option<Self::Item>, Self::Error>
-    where
-        Self: Sized,
-        Self::Item: Ord,
-    {
-        let mut min = match self.next()? {
-            Some(v) => v,
-            None => return Ok(None),
-        };
-
-        while let Some(v) = self.next()? {
-            if min > v {
-                min = v;
-            }
-        }
-
-        Ok(Some(min))
-    }
-
     /// Returns the element of the iterator which gives the minimum value from
     /// the function. The function may fail; such failures are returned to the caller.
     #[inline]
@@ -450,50 +488,6 @@ pub trait FallibleIterator {
         Ok(Some(min.1))
     }
 
-    /// Returns the `n`th element of the iterator.
-    #[inline]
-    fn nth(&mut self, mut n: usize) -> Result<Option<Self::Item>, Self::Error> {
-        while let Some(e) = self.next()? {
-            if n == 0 {
-                return Ok(Some(e));
-            }
-            n -= 1;
-        }
-        Ok(None)
-    }
-
-    /// Returns an iterator that can peek at the next element without consuming
-    /// it.
-    #[inline]
-    fn peekable(self) -> Peekable<Self>
-    where
-        Self: Sized,
-    {
-        Peekable {
-            it: self,
-            next: None,
-        }
-    }
-
-    /// Returns the position of the first element of this iterator that matches
-    /// a predicate. The predicate may fail; such failures are returned to the
-    /// caller.
-    #[inline]
-    fn position<F>(&mut self, mut f: F) -> Result<Option<usize>, Self::Error>
-    where
-        Self: Sized,
-        F: FnMut(Self::Item) -> Result<bool, Self::Error>,
-    {
-        let mut i = 0;
-        while let Some(v) = self.next()? {
-            if f(v)? {
-                return Ok(Some(i));
-            }
-            i += 1;
-        }
-        Ok(None)
-    }
-
     /// Returns an iterator that yields this iterator's items in the opposite
     /// order.
     #[inline]
@@ -504,28 +498,14 @@ pub trait FallibleIterator {
         Rev(self)
     }
 
-    /// Returns an iterator that yields only the first `n` values of this
-    /// iterator.
+    /// Returns an iterator which clones all of its elements.
     #[inline]
-    fn take(self, n: usize) -> Take<Self>
+    fn cloned<'a, T>(self) -> Cloned<Self>
     where
-        Self: Sized,
+        Self: Sized + FallibleIterator<Item = &'a T>,
+        T: 'a + Clone,
     {
-        Take {
-            it: self,
-            remaining: n,
-        }
-    }
-
-    /// Returns an iterator that yields pairs of this iterator's and another
-    /// iterator's values.
-    #[inline]
-    fn zip<I>(self, o: I) -> Zip<Self, I::IntoIter>
-    where
-        Self: Sized,
-        I: IntoFallibleIterator<Error = Self::Error>,
-    {
-        Zip(self, o.into_fallible_iterator())
+        Cloned(self)
     }
 
     /// Lexicographically compares the elements of this iterator to that of
@@ -726,6 +706,26 @@ pub trait FallibleIterator {
                 },
             }
         }
+    }
+
+    /// Returns a normal (non-fallible) iterator over `Result<Item, Error>`.
+    #[inline]
+    fn iterator(self) -> Iterator<Self>
+    where
+        Self: Sized,
+    {
+        Iterator(self)
+    }
+
+    /// Returns an iterator which applies a transform to the errors of the
+    /// underlying iterator.
+    #[inline]
+    fn map_err<B, F>(self, f: F) -> MapErr<Self, F>
+    where
+        F: FnMut(Self::Error) -> B,
+        Self: Sized,
+    {
+        MapErr { it: self, f: f }
     }
 }
 
