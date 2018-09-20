@@ -786,16 +786,17 @@ pub trait FromFallibleIterator<T>: Sized {
     /// Creates a value from a fallible iterator.
     fn from_fallible_iterator<I>(it: I) -> Result<Self, I::Error>
     where
-        I: FallibleIterator<Item = T>;
+        I: IntoFallibleIterator<Item = T>;
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 impl<T> FromFallibleIterator<T> for Vec<T> {
     #[inline]
-    fn from_fallible_iterator<I>(mut it: I) -> Result<Vec<T>, I::Error>
+    fn from_fallible_iterator<I>(it: I) -> Result<Vec<T>, I::Error>
     where
-        I: FallibleIterator<Item = T>,
+        I: IntoFallibleIterator<Item = T>,
     {
+        let mut it = it.into_fallible_iterator();
         let mut vec = Vec::with_capacity(it.size_hint().0);
         while let Some(v) = it.next()? {
             vec.push(v);
@@ -810,10 +811,11 @@ where
     T: Hash + Eq,
 {
     #[inline]
-    fn from_fallible_iterator<I>(mut it: I) -> Result<HashSet<T>, I::Error>
+    fn from_fallible_iterator<I>(it: I) -> Result<HashSet<T>, I::Error>
     where
-        I: FallibleIterator<Item = T>,
+        I: IntoFallibleIterator<Item = T>,
     {
+        let mut it = it.into_fallible_iterator();
         let mut set = HashSet::with_capacity(it.size_hint().0);
         while let Some(v) = it.next()? {
             set.insert(v);
@@ -828,10 +830,11 @@ where
     K: Hash + Eq,
 {
     #[inline]
-    fn from_fallible_iterator<I>(mut it: I) -> Result<HashMap<K, V>, I::Error>
+    fn from_fallible_iterator<I>(it: I) -> Result<HashMap<K, V>, I::Error>
     where
-        I: FallibleIterator<Item = (K, V)>,
+        I: IntoFallibleIterator<Item = (K, V)>,
     {
+        let mut it = it.into_fallible_iterator();
         let mut map = HashMap::with_capacity(it.size_hint().0);
         while let Some((k, v)) = it.next()? {
             map.insert(k, v);
@@ -846,10 +849,11 @@ where
     T: Ord,
 {
     #[inline]
-    fn from_fallible_iterator<I>(mut it: I) -> Result<BTreeSet<T>, I::Error>
+    fn from_fallible_iterator<I>(it: I) -> Result<BTreeSet<T>, I::Error>
     where
-        I: FallibleIterator<Item = T>,
+        I: IntoFallibleIterator<Item = T>,
     {
+        let mut it = it.into_fallible_iterator();
         let mut set = BTreeSet::new();
         while let Some(v) = it.next()? {
             set.insert(v);
@@ -864,10 +868,11 @@ where
     K: Ord,
 {
     #[inline]
-    fn from_fallible_iterator<I>(mut it: I) -> Result<BTreeMap<K, V>, I::Error>
+    fn from_fallible_iterator<I>(it: I) -> Result<BTreeMap<K, V>, I::Error>
     where
-        I: FallibleIterator<Item = (K, V)>,
+        I: IntoFallibleIterator<Item = (K, V)>,
     {
+        let mut it = it.into_fallible_iterator();
         let mut map = BTreeMap::new();
         while let Some((k, v)) = it.next()? {
             map.insert(k, v);
