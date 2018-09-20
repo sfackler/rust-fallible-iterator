@@ -78,9 +78,9 @@ extern crate alloc;
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 mod imports {
     pub use alloc::boxed::Box;
-    pub use alloc::vec::Vec;
     pub use alloc::collections::btree_map::BTreeMap;
     pub use alloc::collections::btree_set::BTreeSet;
+    pub use alloc::vec::Vec;
 }
 
 #[cfg(feature = "std")]
@@ -89,9 +89,9 @@ extern crate std;
 
 #[cfg(feature = "std")]
 mod imports {
-    pub use std::prelude::v1::*;
     pub use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
     pub use std::hash::Hash;
+    pub use std::prelude::v1::*;
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
@@ -140,8 +140,9 @@ pub trait FallibleIterator {
     /// The predicate may fail; such failures are passed to the caller.
     #[inline]
     fn all<F>(&mut self, mut f: F) -> Result<bool, Self::Error>
-        where Self: Sized,
-              F: FnMut(Self::Item) -> Result<bool, Self::Error>
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> Result<bool, Self::Error>,
     {
         while let Some(v) = try!(self.next()) {
             if !f(v)? {
@@ -156,8 +157,9 @@ pub trait FallibleIterator {
     /// The predicate may fail; such failures are passed to the caller.
     #[inline]
     fn any<F>(&mut self, mut f: F) -> Result<bool, Self::Error>
-        where Self: Sized,
-              F: FnMut(Self::Item) -> Result<bool, Self::Error>
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> Result<bool, Self::Error>,
     {
         while let Some(v) = try!(self.next()) {
             if f(v)? {
@@ -174,7 +176,8 @@ pub trait FallibleIterator {
     /// otherwise consume the value.
     #[inline]
     fn by_ref(&mut self) -> &mut Self
-        where Self: Sized
+    where
+        Self: Sized,
     {
         self
     }
@@ -183,8 +186,9 @@ pub trait FallibleIterator {
     /// by another.
     #[inline]
     fn chain<I>(self, it: I) -> Chain<Self, I>
-        where I: IntoFallibleIterator<Item = Self::Item, Error = Self::Error>,
-              Self: Sized
+    where
+        I: IntoFallibleIterator<Item = Self::Item, Error = Self::Error>,
+        Self: Sized,
     {
         Chain {
             front: self,
@@ -196,8 +200,9 @@ pub trait FallibleIterator {
     /// Returns an iterator which clones all of its elements.
     #[inline]
     fn cloned<'a, T>(self) -> Cloned<Self>
-        where Self: Sized + FallibleIterator<Item = &'a T>,
-              T: 'a + Clone
+    where
+        Self: Sized + FallibleIterator<Item = &'a T>,
+        T: 'a + Clone,
     {
         Cloned(self)
     }
@@ -205,7 +210,8 @@ pub trait FallibleIterator {
     /// Consumes the iterator, returning the number of remaining items.
     #[inline]
     fn count(mut self) -> Result<usize, Self::Error>
-        where Self: Sized
+    where
+        Self: Sized,
     {
         let mut count = 0;
         while let Some(_) = try!(self.next()) {
@@ -220,8 +226,9 @@ pub trait FallibleIterator {
     /// An `Err` will be returned if any invocation of `next` returns `Err`.
     #[inline]
     fn collect<T>(self) -> Result<T, Self::Error>
-        where T: FromFallibleIterator<Self::Item>,
-              Self: Sized
+    where
+        T: FromFallibleIterator<Self::Item>,
+        Self: Sized,
     {
         T::from_fallible_iterator(self)
     }
@@ -230,7 +237,8 @@ pub trait FallibleIterator {
     /// as the value.
     #[inline]
     fn enumerate(self) -> Enumerate<Self>
-        where Self: Sized
+    where
+        Self: Sized,
     {
         Enumerate { it: self, n: 0 }
     }
@@ -240,8 +248,9 @@ pub trait FallibleIterator {
     /// the caller.
     #[inline]
     fn filter<F>(self, f: F) -> Filter<Self, F>
-        where Self: Sized,
-              F: FnMut(&Self::Item) -> Result<bool, Self::Error>
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item) -> Result<bool, Self::Error>,
     {
         Filter { it: self, f: f }
     }
@@ -250,8 +259,9 @@ pub trait FallibleIterator {
     /// such failures are passed along to the consumer.
     #[inline]
     fn filter_map<B, F>(self, f: F) -> FilterMap<Self, F>
-        where Self: Sized,
-              F: FnMut(Self::Item) -> Result<Option<B>, Self::Error>
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> Result<Option<B>, Self::Error>,
     {
         FilterMap { it: self, f: f }
     }
@@ -260,8 +270,9 @@ pub trait FallibleIterator {
     /// The predicate may fail; such failures are passed along to the caller.
     #[inline]
     fn find<F>(&mut self, mut f: F) -> Result<Option<Self::Item>, Self::Error>
-        where Self: Sized,
-              F: FnMut(&Self::Item) -> Result<bool, Self::Error>
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item) -> Result<bool, Self::Error>,
     {
         while let Some(v) = try!(self.next()) {
             if f(&v)? {
@@ -280,7 +291,8 @@ pub trait FallibleIterator {
     /// guarantees that `Ok(None)` will always be returned.
     #[inline]
     fn fuse(self) -> Fuse<Self>
-        where Self: Sized
+    where
+        Self: Sized,
     {
         Fuse {
             it: self,
@@ -293,8 +305,9 @@ pub trait FallibleIterator {
     /// caller.
     #[inline]
     fn fold<B, F>(mut self, mut init: B, mut f: F) -> Result<B, Self::Error>
-        where Self: Sized,
-              F: FnMut(B, Self::Item) -> Result<B, Self::Error>
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> Result<B, Self::Error>,
     {
         while let Some(v) = try!(self.next()) {
             init = f(init, v)?;
@@ -306,7 +319,8 @@ pub trait FallibleIterator {
     /// Returns a normal (non-fallible) iterator over `Result<Item, Error>`.
     #[inline]
     fn iterator(self) -> Iterator<Self>
-        where Self: Sized
+    where
+        Self: Sized,
     {
         Iterator(self)
     }
@@ -314,7 +328,8 @@ pub trait FallibleIterator {
     /// Returns the last element of the iterator.
     #[inline]
     fn last(mut self) -> Result<Option<Self::Item>, Self::Error>
-        where Self: Sized
+    where
+        Self: Sized,
     {
         let mut last = None;
         while let Some(e) = try!(self.next()) {
@@ -327,8 +342,9 @@ pub trait FallibleIterator {
     /// of the underlying iterator.
     #[inline]
     fn map<F, B>(self, f: F) -> Map<Self, F>
-        where Self: Sized,
-              F: FnMut(Self::Item) -> Result<B, Self::Error>
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> Result<B, Self::Error>,
     {
         Map { it: self, f: f }
     }
@@ -337,8 +353,9 @@ pub trait FallibleIterator {
     /// underlying iterator.
     #[inline]
     fn map_err<B, F>(self, f: F) -> MapErr<Self, F>
-        where F: FnMut(Self::Error) -> B,
-              Self: Sized
+    where
+        F: FnMut(Self::Error) -> B,
+        Self: Sized,
     {
         MapErr { it: self, f: f }
     }
@@ -346,8 +363,9 @@ pub trait FallibleIterator {
     /// Returns the maximal element of the iterator.
     #[inline]
     fn max(mut self) -> Result<Option<Self::Item>, Self::Error>
-        where Self: Sized,
-              Self::Item: Ord
+    where
+        Self: Sized,
+        Self::Item: Ord,
     {
         let mut max = match try!(self.next()) {
             Some(v) => v,
@@ -367,9 +385,10 @@ pub trait FallibleIterator {
     /// the function. The function may fail; such failures are returned to the caller.
     #[inline]
     fn max_by_key<B, F>(mut self, mut f: F) -> Result<Option<Self::Item>, Self::Error>
-        where Self: Sized,
-              B: Ord,
-              F: FnMut(&Self::Item) -> Result<B, Self::Error>
+    where
+        Self: Sized,
+        B: Ord,
+        F: FnMut(&Self::Item) -> Result<B, Self::Error>,
     {
         let mut max = match try!(self.next()) {
             Some(v) => (f(&v)?, v),
@@ -389,8 +408,9 @@ pub trait FallibleIterator {
     /// Returns the minimal element of the iterator.
     #[inline]
     fn min(mut self) -> Result<Option<Self::Item>, Self::Error>
-        where Self: Sized,
-              Self::Item: Ord
+    where
+        Self: Sized,
+        Self::Item: Ord,
     {
         let mut min = match try!(self.next()) {
             Some(v) => v,
@@ -410,9 +430,10 @@ pub trait FallibleIterator {
     /// the function. The function may fail; such failures are returned to the caller.
     #[inline]
     fn min_by_key<B, F>(mut self, mut f: F) -> Result<Option<Self::Item>, Self::Error>
-        where Self: Sized,
-              B: Ord,
-              F: FnMut(&Self::Item) -> Result<B, Self::Error>
+    where
+        Self: Sized,
+        B: Ord,
+        F: FnMut(&Self::Item) -> Result<B, Self::Error>,
     {
         let mut min = match try!(self.next()) {
             Some(v) => (f(&v)?, v),
@@ -445,7 +466,8 @@ pub trait FallibleIterator {
     /// it.
     #[inline]
     fn peekable(self) -> Peekable<Self>
-        where Self: Sized
+    where
+        Self: Sized,
     {
         Peekable {
             it: self,
@@ -458,8 +480,9 @@ pub trait FallibleIterator {
     /// caller.
     #[inline]
     fn position<F>(&mut self, mut f: F) -> Result<Option<usize>, Self::Error>
-        where Self: Sized,
-              F: FnMut(Self::Item) -> Result<bool, Self::Error>
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> Result<bool, Self::Error>,
     {
         let mut i = 0;
         while let Some(v) = try!(self.next()) {
@@ -475,7 +498,8 @@ pub trait FallibleIterator {
     /// order.
     #[inline]
     fn rev(self) -> Rev<Self>
-        where Self: Sized + DoubleEndedFallibleIterator
+    where
+        Self: Sized + DoubleEndedFallibleIterator,
     {
         Rev(self)
     }
@@ -484,7 +508,8 @@ pub trait FallibleIterator {
     /// iterator.
     #[inline]
     fn take(self, n: usize) -> Take<Self>
-        where Self: Sized
+    where
+        Self: Sized,
     {
         Take {
             it: self,
@@ -496,8 +521,9 @@ pub trait FallibleIterator {
     /// iterator's values.
     #[inline]
     fn zip<I>(self, o: I) -> Zip<Self, I::IntoIter>
-        where Self: Sized,
-              I: IntoFallibleIterator<Error = Self::Error>
+    where
+        Self: Sized,
+        I: IntoFallibleIterator<Error = Self::Error>,
     {
         Zip(self, o.into_fallible_iterator())
     }
@@ -506,9 +532,10 @@ pub trait FallibleIterator {
     /// another.
     #[inline]
     fn cmp<I>(mut self, other: I) -> Result<Ordering, Self::Error>
-        where Self: Sized,
-              I: IntoFallibleIterator<Item = Self::Item, Error = Self::Error>,
-              Self::Item: Ord
+    where
+        Self: Sized,
+        I: IntoFallibleIterator<Item = Self::Item, Error = Self::Error>,
+        Self::Item: Ord,
     {
         let mut other = other.into_fallible_iterator();
 
@@ -517,12 +544,10 @@ pub trait FallibleIterator {
                 (None, None) => return Ok(Ordering::Equal),
                 (None, _) => return Ok(Ordering::Less),
                 (_, None) => return Ok(Ordering::Greater),
-                (Some(x), Some(y)) => {
-                    match x.cmp(&y) {
-                        Ordering::Equal => {}
-                        o => return Ok(o),
-                    }
-                }
+                (Some(x), Some(y)) => match x.cmp(&y) {
+                    Ordering::Equal => {}
+                    o => return Ok(o),
+                },
             }
         }
     }
@@ -531,9 +556,10 @@ pub trait FallibleIterator {
     /// another.
     #[inline]
     fn partial_cmp<I>(mut self, other: I) -> Result<Option<Ordering>, Self::Error>
-        where Self: Sized,
-              I: IntoFallibleIterator<Error = Self::Error>,
-              Self::Item: PartialOrd<I::Item>
+    where
+        Self: Sized,
+        I: IntoFallibleIterator<Error = Self::Error>,
+        Self::Item: PartialOrd<I::Item>,
     {
         let mut other = other.into_fallible_iterator();
 
@@ -542,12 +568,10 @@ pub trait FallibleIterator {
                 (None, None) => return Ok(Some(Ordering::Equal)),
                 (None, _) => return Ok(Some(Ordering::Less)),
                 (_, None) => return Ok(Some(Ordering::Greater)),
-                (Some(x), Some(y)) => {
-                    match x.partial_cmp(&y) {
-                        Some(Ordering::Equal) => {}
-                        o => return Ok(o),
-                    }
-                }
+                (Some(x), Some(y)) => match x.partial_cmp(&y) {
+                    Some(Ordering::Equal) => {}
+                    o => return Ok(o),
+                },
             }
         }
     }
@@ -556,9 +580,10 @@ pub trait FallibleIterator {
     /// another.
     #[inline]
     fn eq<I>(mut self, other: I) -> Result<bool, Self::Error>
-        where Self: Sized,
-              I: IntoFallibleIterator<Error = Self::Error>,
-              Self::Item: PartialEq<I::Item>
+    where
+        Self: Sized,
+        I: IntoFallibleIterator<Error = Self::Error>,
+        Self::Item: PartialEq<I::Item>,
     {
         let mut other = other.into_fallible_iterator();
 
@@ -579,9 +604,10 @@ pub trait FallibleIterator {
     /// another.
     #[inline]
     fn ne<I>(mut self, other: I) -> Result<bool, Self::Error>
-        where Self: Sized,
-              I: IntoFallibleIterator<Error = Self::Error>,
-              Self::Item: PartialEq<I::Item>
+    where
+        Self: Sized,
+        I: IntoFallibleIterator<Error = Self::Error>,
+        Self::Item: PartialEq<I::Item>,
     {
         let mut other = other.into_fallible_iterator();
 
@@ -602,9 +628,10 @@ pub trait FallibleIterator {
     /// than those of another.
     #[inline]
     fn lt<I>(mut self, other: I) -> Result<bool, Self::Error>
-        where Self: Sized,
-              I: IntoFallibleIterator<Error = Self::Error>,
-              Self::Item: PartialOrd<I::Item>
+    where
+        Self: Sized,
+        I: IntoFallibleIterator<Error = Self::Error>,
+        Self::Item: PartialOrd<I::Item>,
     {
         let mut other = other.into_fallible_iterator();
 
@@ -613,14 +640,12 @@ pub trait FallibleIterator {
                 (None, None) => return Ok(false),
                 (None, _) => return Ok(true),
                 (_, None) => return Ok(false),
-                (Some(x), Some(y)) => {
-                    match x.partial_cmp(&y) {
-                        Some(Ordering::Less) => return Ok(true),
-                        Some(Ordering::Equal) => {}
-                        Some(Ordering::Greater) => return Ok(false),
-                        None => return Ok(false),
-                    }
-                }
+                (Some(x), Some(y)) => match x.partial_cmp(&y) {
+                    Some(Ordering::Less) => return Ok(true),
+                    Some(Ordering::Equal) => {}
+                    Some(Ordering::Greater) => return Ok(false),
+                    None => return Ok(false),
+                },
             }
         }
     }
@@ -629,9 +654,10 @@ pub trait FallibleIterator {
     /// than or equal to those of another.
     #[inline]
     fn le<I>(mut self, other: I) -> Result<bool, Self::Error>
-        where Self: Sized,
-              I: IntoFallibleIterator<Error = Self::Error>,
-              Self::Item: PartialOrd<I::Item>
+    where
+        Self: Sized,
+        I: IntoFallibleIterator<Error = Self::Error>,
+        Self::Item: PartialOrd<I::Item>,
     {
         let mut other = other.into_fallible_iterator();
 
@@ -640,14 +666,12 @@ pub trait FallibleIterator {
                 (None, None) => return Ok(true),
                 (None, _) => return Ok(true),
                 (_, None) => return Ok(false),
-                (Some(x), Some(y)) => {
-                    match x.partial_cmp(&y) {
-                        Some(Ordering::Less) => return Ok(true),
-                        Some(Ordering::Equal) => {}
-                        Some(Ordering::Greater) => return Ok(false),
-                        None => return Ok(false),
-                    }
-                }
+                (Some(x), Some(y)) => match x.partial_cmp(&y) {
+                    Some(Ordering::Less) => return Ok(true),
+                    Some(Ordering::Equal) => {}
+                    Some(Ordering::Greater) => return Ok(false),
+                    None => return Ok(false),
+                },
             }
         }
     }
@@ -656,9 +680,10 @@ pub trait FallibleIterator {
     /// greater than those of another.
     #[inline]
     fn gt<I>(mut self, other: I) -> Result<bool, Self::Error>
-        where Self: Sized,
-              I: IntoFallibleIterator<Error = Self::Error>,
-              Self::Item: PartialOrd<I::Item>
+    where
+        Self: Sized,
+        I: IntoFallibleIterator<Error = Self::Error>,
+        Self::Item: PartialOrd<I::Item>,
     {
         let mut other = other.into_fallible_iterator();
 
@@ -667,14 +692,12 @@ pub trait FallibleIterator {
                 (None, None) => return Ok(false),
                 (None, _) => return Ok(false),
                 (_, None) => return Ok(true),
-                (Some(x), Some(y)) => {
-                    match x.partial_cmp(&y) {
-                        Some(Ordering::Less) => return Ok(false),
-                        Some(Ordering::Equal) => {}
-                        Some(Ordering::Greater) => return Ok(true),
-                        None => return Ok(false),
-                    }
-                }
+                (Some(x), Some(y)) => match x.partial_cmp(&y) {
+                    Some(Ordering::Less) => return Ok(false),
+                    Some(Ordering::Equal) => {}
+                    Some(Ordering::Greater) => return Ok(true),
+                    None => return Ok(false),
+                },
             }
         }
     }
@@ -683,9 +706,10 @@ pub trait FallibleIterator {
     /// greater than or equal to those of another.
     #[inline]
     fn ge<I>(mut self, other: I) -> Result<bool, Self::Error>
-        where Self: Sized,
-              I: IntoFallibleIterator<Error = Self::Error>,
-              Self::Item: PartialOrd<I::Item>
+    where
+        Self: Sized,
+        I: IntoFallibleIterator<Error = Self::Error>,
+        Self::Item: PartialOrd<I::Item>,
     {
         let mut other = other.into_fallible_iterator();
 
@@ -694,14 +718,12 @@ pub trait FallibleIterator {
                 (None, None) => return Ok(true),
                 (None, _) => return Ok(false),
                 (_, None) => return Ok(true),
-                (Some(x), Some(y)) => {
-                    match x.partial_cmp(&y) {
-                        Some(Ordering::Less) => return Ok(false),
-                        Some(Ordering::Equal) => {}
-                        Some(Ordering::Greater) => return Ok(true),
-                        None => return Ok(false),
-                    }
-                }
+                (Some(x), Some(y)) => match x.partial_cmp(&y) {
+                    Some(Ordering::Less) => return Ok(false),
+                    Some(Ordering::Equal) => {}
+                    Some(Ordering::Greater) => return Ok(true),
+                    None => return Ok(false),
+                },
             }
         }
     }
@@ -763,14 +785,16 @@ pub trait DoubleEndedFallibleIterator: FallibleIterator {
 pub trait FromFallibleIterator<T>: Sized {
     /// Creates a value from a fallible iterator.
     fn from_fallible_iterator<I>(it: I) -> Result<Self, I::Error>
-        where I: FallibleIterator<Item = T>;
+    where
+        I: FallibleIterator<Item = T>;
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 impl<T> FromFallibleIterator<T> for Vec<T> {
     #[inline]
     fn from_fallible_iterator<I>(mut it: I) -> Result<Vec<T>, I::Error>
-        where I: FallibleIterator<Item = T>
+    where
+        I: FallibleIterator<Item = T>,
     {
         let mut vec = Vec::with_capacity(it.size_hint().0);
         while let Some(v) = try!(it.next()) {
@@ -782,11 +806,13 @@ impl<T> FromFallibleIterator<T> for Vec<T> {
 
 #[cfg(feature = "std")]
 impl<T> FromFallibleIterator<T> for HashSet<T>
-    where T: Hash + Eq
+where
+    T: Hash + Eq,
 {
     #[inline]
     fn from_fallible_iterator<I>(mut it: I) -> Result<HashSet<T>, I::Error>
-        where I: FallibleIterator<Item = T>
+    where
+        I: FallibleIterator<Item = T>,
     {
         let mut set = HashSet::with_capacity(it.size_hint().0);
         while let Some(v) = try!(it.next()) {
@@ -798,11 +824,13 @@ impl<T> FromFallibleIterator<T> for HashSet<T>
 
 #[cfg(feature = "std")]
 impl<K, V> FromFallibleIterator<(K, V)> for HashMap<K, V>
-    where K: Hash + Eq
+where
+    K: Hash + Eq,
 {
     #[inline]
     fn from_fallible_iterator<I>(mut it: I) -> Result<HashMap<K, V>, I::Error>
-        where I: FallibleIterator<Item = (K, V)>
+    where
+        I: FallibleIterator<Item = (K, V)>,
     {
         let mut map = HashMap::with_capacity(it.size_hint().0);
         while let Some((k, v)) = try!(it.next()) {
@@ -814,11 +842,13 @@ impl<K, V> FromFallibleIterator<(K, V)> for HashMap<K, V>
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 impl<T> FromFallibleIterator<T> for BTreeSet<T>
-    where T: Ord
+where
+    T: Ord,
 {
     #[inline]
     fn from_fallible_iterator<I>(mut it: I) -> Result<BTreeSet<T>, I::Error>
-        where I: FallibleIterator<Item = T>
+    where
+        I: FallibleIterator<Item = T>,
     {
         let mut set = BTreeSet::new();
         while let Some(v) = try!(it.next()) {
@@ -830,11 +860,13 @@ impl<T> FromFallibleIterator<T> for BTreeSet<T>
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 impl<K, V> FromFallibleIterator<(K, V)> for BTreeMap<K, V>
-    where K: Ord
+where
+    K: Ord,
 {
     #[inline]
     fn from_fallible_iterator<I>(mut it: I) -> Result<BTreeMap<K, V>, I::Error>
-        where I: FallibleIterator<Item = (K, V)>
+    where
+        I: FallibleIterator<Item = (K, V)>,
     {
         let mut map = BTreeMap::new();
         while let Some((k, v)) = try!(it.next()) {
@@ -860,7 +892,8 @@ pub trait IntoFallibleIterator {
 }
 
 impl<I> IntoFallibleIterator for I
-    where I: FallibleIterator
+where
+    I: FallibleIterator,
 {
     type Item = I::Item;
     type Error = I::Error;
@@ -881,8 +914,9 @@ pub struct Map<T, F> {
 }
 
 impl<T, F, B> FallibleIterator for Map<T, F>
-    where T: FallibleIterator,
-          F: FnMut(T::Item) -> Result<B, T::Error>
+where
+    T: FallibleIterator,
+    F: FnMut(T::Item) -> Result<B, T::Error>,
 {
     type Item = B;
     type Error = T::Error;
@@ -903,8 +937,9 @@ impl<T, F, B> FallibleIterator for Map<T, F>
 }
 
 impl<B, F, I> DoubleEndedFallibleIterator for Map<I, F>
-    where I: DoubleEndedFallibleIterator,
-          F: FnMut(I::Item) -> Result<B, I::Error>
+where
+    I: DoubleEndedFallibleIterator,
+    F: FnMut(I::Item) -> Result<B, I::Error>,
 {
     #[inline]
     fn next_back(&mut self) -> Result<Option<B>, I::Error> {
@@ -932,8 +967,9 @@ pub struct Chain<T, U> {
 }
 
 impl<T, U> FallibleIterator for Chain<T, U>
-    where T: FallibleIterator,
-          U: FallibleIterator<Item = T::Item, Error = T::Error>
+where
+    T: FallibleIterator,
+    U: FallibleIterator<Item = T::Item, Error = T::Error>,
 {
     type Item = T::Item;
     type Error = T::Error;
@@ -941,15 +977,13 @@ impl<T, U> FallibleIterator for Chain<T, U>
     #[inline]
     fn next(&mut self) -> Result<Option<T::Item>, T::Error> {
         match self.state {
-            ChainState::Both => {
-                match try!(self.front.next()) {
-                    Some(e) => Ok(Some(e)),
-                    None => {
-                        self.state = ChainState::Back;
-                        self.back.next()
-                    }
+            ChainState::Both => match try!(self.front.next()) {
+                Some(e) => Ok(Some(e)),
+                None => {
+                    self.state = ChainState::Back;
+                    self.back.next()
                 }
-            }
+            },
             ChainState::Front => self.front.next(),
             ChainState::Back => self.back.next(),
         }
@@ -980,21 +1014,20 @@ impl<T, U> FallibleIterator for Chain<T, U>
 }
 
 impl<T, U> DoubleEndedFallibleIterator for Chain<T, U>
-    where T: DoubleEndedFallibleIterator,
-          U: DoubleEndedFallibleIterator<Item = T::Item, Error = T::Error>
+where
+    T: DoubleEndedFallibleIterator,
+    U: DoubleEndedFallibleIterator<Item = T::Item, Error = T::Error>,
 {
     #[inline]
     fn next_back(&mut self) -> Result<Option<T::Item>, T::Error> {
         match self.state {
-            ChainState::Both => {
-                match try!(self.back.next_back()) {
-                    Some(e) => Ok(Some(e)),
-                    None => {
-                        self.state = ChainState::Front;
-                        self.front.next_back()
-                    }
+            ChainState::Both => match try!(self.back.next_back()) {
+                Some(e) => Ok(Some(e)),
+                None => {
+                    self.state = ChainState::Front;
+                    self.front.next_back()
                 }
-            }
+            },
             ChainState::Front => self.front.next_back(),
             ChainState::Back => self.back.next_back(),
         }
@@ -1006,8 +1039,9 @@ impl<T, U> DoubleEndedFallibleIterator for Chain<T, U>
 pub struct Cloned<I>(I);
 
 impl<'a, T, I> FallibleIterator for Cloned<I>
-    where I: FallibleIterator<Item = &'a T>,
-          T: 'a + Clone
+where
+    I: FallibleIterator<Item = &'a T>,
+    T: 'a + Clone,
 {
     type Item = T;
     type Error = I::Error;
@@ -1029,8 +1063,9 @@ impl<'a, T, I> FallibleIterator for Cloned<I>
 }
 
 impl<'a, T, I> DoubleEndedFallibleIterator for Cloned<I>
-    where I: DoubleEndedFallibleIterator<Item = &'a T>,
-          T: 'a + Clone
+where
+    I: DoubleEndedFallibleIterator<Item = &'a T>,
+    T: 'a + Clone,
 {
     #[inline]
     fn next_back(&mut self) -> Result<Option<T>, I::Error> {
@@ -1041,7 +1076,8 @@ impl<'a, T, I> DoubleEndedFallibleIterator for Cloned<I>
 /// Converts an `Iterator<Item = Result<T, E>>` into a `FallibleIterator<Item = T, Error = E>`.
 #[inline]
 pub fn convert<T, E, I>(it: I) -> Convert<I>
-    where I: iter::Iterator<Item = Result<T, E>>
+where
+    I: iter::Iterator<Item = Result<T, E>>,
 {
     Convert(it)
 }
@@ -1051,7 +1087,8 @@ pub fn convert<T, E, I>(it: I) -> Convert<I>
 pub struct Convert<I>(I);
 
 impl<T, E, I> FallibleIterator for Convert<I>
-    where I: iter::Iterator<Item = Result<T, E>>
+where
+    I: iter::Iterator<Item = Result<T, E>>,
 {
     type Item = T;
     type Error = E;
@@ -1072,7 +1109,8 @@ impl<T, E, I> FallibleIterator for Convert<I>
 }
 
 impl<T, E, I> DoubleEndedFallibleIterator for Convert<I>
-    where I: DoubleEndedIterator<Item = Result<T, E>>
+where
+    I: DoubleEndedIterator<Item = Result<T, E>>,
 {
     #[inline]
     fn next_back(&mut self) -> Result<Option<T>, E> {
@@ -1093,22 +1131,21 @@ pub struct Enumerate<I> {
 }
 
 impl<I> FallibleIterator for Enumerate<I>
-    where I: FallibleIterator
+where
+    I: FallibleIterator,
 {
     type Item = (usize, I::Item);
     type Error = I::Error;
 
     #[inline]
     fn next(&mut self) -> Result<Option<(usize, I::Item)>, I::Error> {
-        self.it
-            .next()
-            .map(|o| {
-                o.map(|e| {
-                    let i = self.n;
-                    self.n += 1;
-                    (i, e)
-                })
+        self.it.next().map(|o| {
+            o.map(|e| {
+                let i = self.n;
+                self.n += 1;
+                (i, e)
             })
+        })
     }
 
     #[inline]
@@ -1131,8 +1168,9 @@ pub struct Filter<I, F> {
 }
 
 impl<I, F> FallibleIterator for Filter<I, F>
-    where I: FallibleIterator,
-          F: FnMut(&I::Item) -> Result<bool, I::Error>
+where
+    I: FallibleIterator,
+    F: FnMut(&I::Item) -> Result<bool, I::Error>,
 {
     type Item = I::Item;
     type Error = I::Error;
@@ -1155,8 +1193,9 @@ impl<I, F> FallibleIterator for Filter<I, F>
 }
 
 impl<I, F> DoubleEndedFallibleIterator for Filter<I, F>
-    where I: DoubleEndedFallibleIterator,
-          F: FnMut(&I::Item) -> Result<bool, I::Error>
+where
+    I: DoubleEndedFallibleIterator,
+    F: FnMut(&I::Item) -> Result<bool, I::Error>,
 {
     #[inline]
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
@@ -1179,8 +1218,9 @@ pub struct FilterMap<I, F> {
 }
 
 impl<B, I, F> FallibleIterator for FilterMap<I, F>
-    where I: FallibleIterator,
-          F: FnMut(I::Item) -> Result<Option<B>, I::Error>
+where
+    I: FallibleIterator,
+    F: FnMut(I::Item) -> Result<Option<B>, I::Error>,
 {
     type Item = B;
     type Error = I::Error;
@@ -1203,8 +1243,9 @@ impl<B, I, F> FallibleIterator for FilterMap<I, F>
 }
 
 impl<B, I, F> DoubleEndedFallibleIterator for FilterMap<I, F>
-    where I: DoubleEndedFallibleIterator,
-          F: FnMut(I::Item) -> Result<Option<B>, I::Error>
+where
+    I: DoubleEndedFallibleIterator,
+    F: FnMut(I::Item) -> Result<Option<B>, I::Error>,
 {
     #[inline]
     fn next_back(&mut self) -> Result<Option<B>, I::Error> {
@@ -1227,7 +1268,8 @@ pub struct Fuse<I> {
 }
 
 impl<I> FallibleIterator for Fuse<I>
-    where I: FallibleIterator
+where
+    I: FallibleIterator,
 {
     type Item = I::Item;
     type Error = I::Error;
@@ -1268,7 +1310,8 @@ impl<I> FallibleIterator for Fuse<I>
 pub struct Iterator<I>(I);
 
 impl<I> iter::Iterator for Iterator<I>
-    where I: FallibleIterator
+where
+    I: FallibleIterator,
 {
     type Item = Result<I::Item, I::Error>;
 
@@ -1288,7 +1331,8 @@ impl<I> iter::Iterator for Iterator<I>
 }
 
 impl<I> DoubleEndedIterator for Iterator<I>
-    where I: DoubleEndedFallibleIterator
+where
+    I: DoubleEndedFallibleIterator,
 {
     #[inline]
     fn next_back(&mut self) -> Option<Result<I::Item, I::Error>> {
@@ -1309,8 +1353,9 @@ pub struct MapErr<I, F> {
 }
 
 impl<B, F, I> FallibleIterator for MapErr<I, F>
-    where I: FallibleIterator,
-          F: FnMut(I::Error) -> B
+where
+    I: FallibleIterator,
+    F: FnMut(I::Error) -> B,
 {
     type Item = I::Item;
     type Error = B;
@@ -1332,8 +1377,9 @@ impl<B, F, I> FallibleIterator for MapErr<I, F>
 }
 
 impl<B, F, I> DoubleEndedFallibleIterator for MapErr<I, F>
-    where I: DoubleEndedFallibleIterator,
-          F: FnMut(I::Error) -> B
+where
+    I: DoubleEndedFallibleIterator,
+    F: FnMut(I::Error) -> B,
 {
     #[inline]
     fn next_back(&mut self) -> Result<Option<I::Item>, B> {
@@ -1349,7 +1395,8 @@ pub struct Peekable<I: FallibleIterator> {
 }
 
 impl<I> Peekable<I>
-    where I: FallibleIterator
+where
+    I: FallibleIterator,
 {
     /// Returns a reference to the next value without advancing the iterator.
     #[inline]
@@ -1363,7 +1410,8 @@ impl<I> Peekable<I>
 }
 
 impl<I> FallibleIterator for Peekable<I>
-    where I: FallibleIterator
+where
+    I: FallibleIterator,
 {
     type Item = I::Item;
     type Error = I::Error;
@@ -1394,7 +1442,8 @@ impl<I> FallibleIterator for Peekable<I>
 pub struct Rev<I>(I);
 
 impl<I> FallibleIterator for Rev<I>
-    where I: DoubleEndedFallibleIterator
+where
+    I: DoubleEndedFallibleIterator,
 {
     type Item = I::Item;
     type Error = I::Error;
@@ -1416,7 +1465,8 @@ impl<I> FallibleIterator for Rev<I>
 }
 
 impl<I> DoubleEndedFallibleIterator for Rev<I>
-    where I: DoubleEndedFallibleIterator
+where
+    I: DoubleEndedFallibleIterator,
 {
     #[inline]
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
@@ -1433,7 +1483,8 @@ pub struct Take<I> {
 }
 
 impl<I> FallibleIterator for Take<I>
-    where I: FallibleIterator
+where
+    I: FallibleIterator,
 {
     type Item = I::Item;
     type Error = I::Error;
@@ -1454,7 +1505,10 @@ impl<I> FallibleIterator for Take<I>
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let hint = self.it.size_hint();
-        (cmp::min(hint.0, self.remaining), hint.1.map(|n| cmp::min(n, self.remaining)))
+        (
+            cmp::min(hint.0, self.remaining),
+            hint.1.map(|n| cmp::min(n, self.remaining)),
+        )
     }
 }
 
@@ -1464,8 +1518,9 @@ impl<I> FallibleIterator for Take<I>
 pub struct Zip<T, U>(T, U);
 
 impl<T, U> FallibleIterator for Zip<T, U>
-    where T: FallibleIterator,
-          U: FallibleIterator<Error = T::Error>
+where
+    T: FallibleIterator,
+    U: FallibleIterator<Error = T::Error>,
 {
     type Item = (T::Item, U::Item);
     type Error = T::Error;
