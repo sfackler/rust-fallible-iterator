@@ -176,9 +176,9 @@ pub trait FallibleIterator {
     }
 
     /// Returns an iterator starting at the same point, but stepping by the given amount at each iteration.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// Panics if `step` is 0.
     #[inline]
     fn step_by(self, step: usize) -> StepBy<Self>
@@ -228,6 +228,16 @@ pub trait FallibleIterator {
         F: FnMut(Self::Item) -> Result<B, Self::Error>,
     {
         Map { it: self, f: f }
+    }
+
+    /// Calls a fallible closure on each element of an iterator.
+    #[inline]
+    fn for_each<F>(self, mut f: F) -> Result<(), Self::Error>
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> Result<(), Self::Error>,
+    {
+        self.fold((), move |(), item| f(item))
     }
 
     /// Returns an iterator which uses a predicate to determine which values
