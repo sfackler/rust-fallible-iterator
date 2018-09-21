@@ -175,6 +175,24 @@ pub trait FallibleIterator {
         Ok(None)
     }
 
+    /// Returns an iterator starting at the same point, but stepping by the given amount at each iteration.
+    /// 
+    /// # Panics
+    /// 
+    /// Panics if `step` is 0.
+    #[inline]
+    fn step_by(self, step: usize) -> StepBy<Self>
+    where
+        Self: Sized,
+    {
+        assert!(step != 0);
+        StepBy {
+            it: self,
+            step: step - 1,
+            first_take: true,
+        }
+    }
+
     /// Returns an iterator which yields the elements of this iterator followed
     /// by another.
     #[inline]
@@ -1476,6 +1494,50 @@ where
     #[inline]
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
         self.0.next()
+    }
+}
+
+/// An iterator which steps through the elements of the underlying iterator by a certain amount.
+#[derive(Clone, Debug)]
+pub struct StepBy<I> {
+    it: I,
+    step: usize,
+    first_take: bool,
+}
+
+impl<I> FallibleIterator for StepBy<I>
+where
+    I: FallibleIterator,
+{
+    type Item = I::Item;
+    type Error = I::Error;
+
+    #[inline]
+    fn next(&mut self) -> Result<Option<I::Item>, I::Error> {
+        if self.first_take {
+            self.first_take = false;
+            self.it.next()
+        } else {
+            self.it.nth(self.step)
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let inner_hint = self.it.size_hint();
+
+        if self.first_take {
+            let f = |n| {
+                if n == 0 {
+                    0
+                } else {
+                    1 + (n - 1) / (self.step + 1)
+                }
+            };
+            (f(inner_hint.0), inner_hint.1.map(f))
+        } else {
+            let f = |n| n / (self.step + 1);
+            (f(inner_hint.0), inner_hint.1.map(f))
+        }
     }
 }
 
