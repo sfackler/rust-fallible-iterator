@@ -291,9 +291,23 @@ pub trait FallibleIterator {
     fn skip_while<P>(self, predicate: P) -> SkipWhile<Self, P>
     where
         Self: Sized,
-        P: FnMut(&Self::Item) -> Result<bool, Self::Error>
+        P: FnMut(&Self::Item) -> Result<bool, Self::Error>,
     {
         SkipWhile {
+            it: self,
+            flag: false,
+            predicate,
+        }
+    }
+
+    /// Returns an iterator that yields elements based on a predicate.
+    #[inline]
+    fn take_while<P>(self, predicate: P) -> TakeWhile<Self, P>
+    where
+        Self: Sized,
+        P: FnMut(&Self::Item) -> Result<bool, Self::Error>,
+    {
+        TakeWhile {
             it: self,
             flag: false,
             predicate,
@@ -1532,7 +1546,7 @@ pub struct SkipWhile<I, P> {
 impl<I, P> FallibleIterator for SkipWhile<I, P>
 where
     I: FallibleIterator,
-    P: FnMut(&I::Item) -> Result<bool, I::Error>
+    P: FnMut(&I::Item) -> Result<bool, I::Error>,
 {
     type Item = I::Item;
     type Error = I::Error;
@@ -1641,6 +1655,52 @@ where
             cmp::min(hint.0, self.remaining),
             hint.1.map(|n| cmp::min(n, self.remaining)),
         )
+    }
+}
+
+/// An iterator which yields elements based on a predicate.
+#[derive(Clone, Debug)]
+pub struct TakeWhile<I, P> {
+    it: I,
+    flag: bool,
+    predicate: P,
+}
+
+impl<I, P> FallibleIterator for TakeWhile<I, P>
+where
+    I: FallibleIterator,
+    P: FnMut(&I::Item) -> Result<bool, I::Error>,
+{
+    type Item = I::Item;
+    type Error = I::Error;
+
+    #[inline]
+    fn next(&mut self) -> Result<Option<I::Item>, I::Error> {
+        if self.flag {
+            Ok(None)
+        } else {
+            match self.it.next()? {
+                Some(item) => {
+                    if (self.predicate)(&item)? {
+                        Ok(Some(item))
+                    } else {
+                        self.flag = true;
+                        Ok(None)
+                    }
+                }
+                None => Ok(None),
+            }
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.flag {
+            (0, Some(0))
+        } else {
+            let hint = self.it.size_hint();
+            (0, hint.1)
+        }
     }
 }
 
