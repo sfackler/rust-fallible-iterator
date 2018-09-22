@@ -316,6 +316,14 @@ fn position() {
 }
 
 #[test]
+fn skip() {
+    let it = convert(vec![1, 2, 3, 4].into_iter().map(Ok::<i32, ()>));
+    assert_eq!(it.clone().skip(0).collect::<Vec<_>>(), Ok(vec![1, 2, 3, 4]));
+    assert_eq!(it.clone().skip(2).collect::<Vec<_>>(), Ok(vec![3, 4]));
+    assert_eq!(it.clone().skip(4).collect::<Vec<_>>(), Ok(vec![]));
+}
+
+#[test]
 fn skip_while() {
     let it = convert(vec![1, 2, 3, 4, 1].into_iter().map(Ok::<i32, ()>));
     assert_eq!(it.clone().skip_while(|x| Ok(*x < 1)).collect::<Vec<_>>(), Ok(vec![1, 2, 3, 4, 1]));

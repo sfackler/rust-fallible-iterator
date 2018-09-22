@@ -314,6 +314,15 @@ pub trait FallibleIterator {
         }
     }
 
+    /// Returns an iterator which skips the first `n` values of this iterator.
+    #[inline]
+    fn skip(self, n: usize) -> Skip<Self>
+    where
+        Self: Sized,
+    {
+        Skip { it: self, n }
+    }
+
     /// Returns an iterator that yields only the first `n` values of this
     /// iterator.
     #[inline]
@@ -1532,6 +1541,42 @@ where
     #[inline]
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
         self.0.next()
+    }
+}
+
+/// An iterator which skips initial elements.
+#[derive(Clone, Debug)]
+pub struct Skip<I> {
+    it: I,
+    n: usize,
+}
+
+impl<I> FallibleIterator for Skip<I>
+where
+    I: FallibleIterator,
+{
+    type Item = I::Item;
+    type Error = I::Error;
+
+    #[inline]
+    fn next(&mut self) -> Result<Option<I::Item>, I::Error> {
+        if self.n == 0 {
+            self.it.next()
+        } else {
+            let n = self.n;
+            self.n = 0;
+            self.it.nth(n)
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let hint = self.it.size_hint();
+
+        (
+            hint.0.saturating_sub(self.n),
+            hint.1.map(|x| x.saturating_sub(self.n)),
+        )
     }
 }
 
