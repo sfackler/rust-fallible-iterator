@@ -336,6 +336,21 @@ pub trait FallibleIterator {
         }
     }
 
+    /// Returns an iterator which applies a stateful map to values of this
+    /// iterator.
+    #[inline]
+    fn scan<St, B, F>(self, initial_state: St, f: F) -> Scan<Self, St, F>
+    where
+        Self: Sized,
+        F: FnMut(&mut St, Self::Item) -> Result<Option<B>, Self::Error>,
+    {
+        Scan {
+            it: self,
+            f,
+            state: initial_state,
+        }
+    }
+
     /// Returns an iterator which yields this iterator's elements and ends after
     /// the first `Ok(None)`.
     ///
@@ -1541,6 +1556,37 @@ where
     #[inline]
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
         self.0.next()
+    }
+}
+
+/// An iterator which applies a stateful closure.
+#[derive(Clone, Debug)]
+pub struct Scan<I, St, F> {
+    it: I,
+    f: F,
+    state: St,
+}
+
+impl<B, I, St, F> FallibleIterator for Scan<I, St, F>
+where
+    I: FallibleIterator,
+    F: FnMut(&mut St, I::Item) -> Result<Option<B>, I::Error>,
+{
+    type Item = B;
+    type Error = I::Error;
+
+    #[inline]
+    fn next(&mut self) -> Result<Option<B>, I::Error> {
+        match self.it.next()? {
+            Some(v) => (self.f)(&mut self.state, v),
+            None => Ok(None),
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let hint = self.it.size_hint();
+        (0, hint.1)
     }
 }
 

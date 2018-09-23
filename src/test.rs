@@ -316,6 +316,19 @@ fn position() {
 }
 
 #[test]
+fn scan() {
+    let it = convert(vec![1, 2, 3, 4].into_iter().map(Ok::<i32, ()>)).scan(0, |st, v| {
+        if v > 3 {
+            Ok(None)
+        } else {
+            *st += v;
+            Ok(Some(-*st))
+        }
+    });
+    assert_eq!(it.collect::<Vec<_>>(), Ok(vec![-1, -3, -6]));
+}
+
+#[test]
 fn skip() {
     let it = convert(vec![1, 2, 3, 4].into_iter().map(Ok::<i32, ()>));
     assert_eq!(it.clone().skip(0).collect::<Vec<_>>(), Ok(vec![1, 2, 3, 4]));
@@ -326,9 +339,18 @@ fn skip() {
 #[test]
 fn skip_while() {
     let it = convert(vec![1, 2, 3, 4, 1].into_iter().map(Ok::<i32, ()>));
-    assert_eq!(it.clone().skip_while(|x| Ok(*x < 1)).collect::<Vec<_>>(), Ok(vec![1, 2, 3, 4, 1]));
-    assert_eq!(it.clone().skip_while(|x| Ok(*x < 3)).collect::<Vec<_>>(), Ok(vec![3, 4, 1]));
-    assert_eq!(it.clone().skip_while(|x| Ok(*x < 5)).collect::<Vec<_>>(), Ok(vec![]));
+    assert_eq!(
+        it.clone().skip_while(|x| Ok(*x < 1)).collect::<Vec<_>>(),
+        Ok(vec![1, 2, 3, 4, 1])
+    );
+    assert_eq!(
+        it.clone().skip_while(|x| Ok(*x < 3)).collect::<Vec<_>>(),
+        Ok(vec![3, 4, 1])
+    );
+    assert_eq!(
+        it.clone().skip_while(|x| Ok(*x < 5)).collect::<Vec<_>>(),
+        Ok(vec![])
+    );
 }
 
 #[test]
@@ -350,7 +372,16 @@ fn take() {
 #[test]
 fn take_while() {
     let it = convert(vec![0, 1, 2, 3, 0].into_iter().map(Ok::<i32, ()>));
-    assert_eq!(it.clone().take_while(|x| Ok(*x < 0)).collect::<Vec<_>>(), Ok(vec![]));
-    assert_eq!(it.clone().take_while(|x| Ok(*x < 2)).collect::<Vec<_>>(), Ok(vec![0, 1]));
-    assert_eq!(it.clone().take_while(|x| Ok(*x < 4)).collect::<Vec<_>>(), Ok(vec![0, 1, 2, 3, 0]));
+    assert_eq!(
+        it.clone().take_while(|x| Ok(*x < 0)).collect::<Vec<_>>(),
+        Ok(vec![])
+    );
+    assert_eq!(
+        it.clone().take_while(|x| Ok(*x < 2)).collect::<Vec<_>>(),
+        Ok(vec![0, 1])
+    );
+    assert_eq!(
+        it.clone().take_while(|x| Ok(*x < 4)).collect::<Vec<_>>(),
+        Ok(vec![0, 1, 2, 3, 0])
+    );
 }
