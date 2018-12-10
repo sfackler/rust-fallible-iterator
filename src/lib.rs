@@ -90,7 +90,7 @@ extern crate std;
 #[cfg(feature = "std")]
 mod imports {
     pub use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-    pub use std::hash::Hash;
+    pub use std::hash::{Hash, BuildHasher};
     pub use std::prelude::v1::*;
 }
 
@@ -886,17 +886,19 @@ impl<T> FromFallibleIterator<T> for Vec<T> {
 }
 
 #[cfg(feature = "std")]
-impl<T> FromFallibleIterator<T> for HashSet<T>
+impl<T, S> FromFallibleIterator<T> for HashSet<T, S>
 where
     T: Hash + Eq,
+    S: BuildHasher + Default,
 {
     #[inline]
-    fn from_fallible_iterator<I>(it: I) -> Result<HashSet<T>, I::Error>
+    fn from_fallible_iterator<I>(it: I) -> Result<HashSet<T, S>, I::Error>
     where
         I: IntoFallibleIterator<Item = T>,
     {
         let mut it = it.into_fallible_iterator();
-        let mut set = HashSet::with_capacity(it.size_hint().0);
+        let mut set = HashSet::default();
+        set.reserve(it.size_hint().0);
         while let Some(v) = it.next()? {
             set.insert(v);
         }
@@ -905,17 +907,19 @@ where
 }
 
 #[cfg(feature = "std")]
-impl<K, V> FromFallibleIterator<(K, V)> for HashMap<K, V>
+impl<K, V, S> FromFallibleIterator<(K, V)> for HashMap<K, V, S>
 where
     K: Hash + Eq,
+    S: BuildHasher + Default,
 {
     #[inline]
-    fn from_fallible_iterator<I>(it: I) -> Result<HashMap<K, V>, I::Error>
+    fn from_fallible_iterator<I>(it: I) -> Result<HashMap<K, V, S>, I::Error>
     where
         I: IntoFallibleIterator<Item = (K, V)>,
     {
         let mut it = it.into_fallible_iterator();
-        let mut map = HashMap::with_capacity(it.size_hint().0);
+        let mut map = HashMap::default();
+        map.reserve(it.size_hint().0);
         while let Some((k, v)) = it.next()? {
             map.insert(k, v);
         }
