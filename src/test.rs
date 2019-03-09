@@ -395,3 +395,11 @@ fn flatten() {
     .flatten();
     assert_eq!(it.collect::<Vec<_>>(), Ok(vec![0, 1, 2, 3, 4]));
 }
+
+#[test]
+fn inspect() {
+    let mut buf = vec![];
+    let it = convert(vec![0, 1, 2, 3].into_iter().map(Ok::<i32, ()>)).inspect(|v| Ok(buf.push(*v)));
+    it.count().unwrap();
+    assert_eq!(buf, vec![0, 1, 2, 3]);
+}

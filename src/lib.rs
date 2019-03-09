@@ -378,6 +378,16 @@ pub trait FallibleIterator {
         }
     }
 
+    /// Returns an iterator which passes each element to a closure before returning it.
+    #[inline]
+    fn inspect<F>(self, f: F) -> Inspect<Self, F>
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item) -> Result<(), Self::Error>,
+    {
+        Inspect { it: self, f }
+    }
+
     /// Returns an iterator which yields this iterator's elements and ends after
     /// the first `Ok(None)`.
     ///
@@ -1501,6 +1511,55 @@ where
             Ok(0)
         } else {
             self.it.count()
+        }
+    }
+}
+
+/// An iterator which passes each element to a closure before returning it.
+#[derive(Clone, Debug)]
+pub struct Inspect<I, F> {
+    it: I,
+    f: F,
+}
+
+impl<I, F> FallibleIterator for Inspect<I, F>
+where
+    I: FallibleIterator,
+    F: FnMut(&I::Item) -> Result<(), I::Error>,
+{
+    type Item = I::Item;
+    type Error = I::Error;
+
+    #[inline]
+    fn next(&mut self) -> Result<Option<I::Item>, I::Error> {
+        match self.it.next()? {
+            Some(i) => {
+                (self.f)(&i)?;
+                Ok(Some(i))
+            }
+            None => Ok(None),
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.it.size_hint()
+    }
+}
+
+impl<I, F> DoubleEndedFallibleIterator for Inspect<I, F>
+where
+    I: DoubleEndedFallibleIterator,
+    F: FnMut(&I::Item) -> Result<(), I::Error>,
+{
+    #[inline]
+    fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
+        match self.it.next_back()? {
+            Some(i) => {
+                (self.f)(&i)?;
+                Ok(Some(i))
+            }
+            None => Ok(None),
         }
     }
 }
