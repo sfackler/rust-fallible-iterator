@@ -1,43 +1,32 @@
 use core::iter;
+use core::ops::Range;
 
 use super::{convert, FallibleIterator, Vec};
 
 #[test]
 fn all() {
-    assert!(
-        convert([0, 1, 2, 3].iter().map(Ok::<&u32, ()>))
-            .all(|&i| Ok(i < 4))
-            .unwrap()
-    );
-    assert!(
-        !convert([0, 1, 2, 4].iter().map(Ok::<&u32, ()>))
-            .all(|&i| Ok(i < 4))
-            .unwrap()
-    );
-    assert!(
-        convert([0, 1, 2, 4].iter().map(Ok::<&u32, ()>))
-            .all(|_| Err(()))
-            .is_err()
-    );
+    assert!(convert([0, 1, 2, 3].iter().map(Ok::<&u32, ()>))
+        .all(|&i| Ok(i < 4))
+        .unwrap());
+    assert!(!convert([0, 1, 2, 4].iter().map(Ok::<&u32, ()>))
+        .all(|&i| Ok(i < 4))
+        .unwrap());
+    assert!(convert([0, 1, 2, 4].iter().map(Ok::<&u32, ()>))
+        .all(|_| Err(()))
+        .is_err());
 }
 
 #[test]
 fn any() {
-    assert!(
-        convert([0, 1, 2, 3].iter().map(Ok::<&u32, ()>))
-            .any(|&i| Ok(i == 3))
-            .unwrap()
-    );
-    assert!(
-        !convert([0, 1, 2, 4].iter().map(Ok::<&u32, ()>))
-            .any(|&i| Ok(i == 3))
-            .unwrap()
-    );
-    assert!(
-        convert([0, 1, 2, 4].iter().map(Ok::<&u32, ()>))
-            .any(|_| Err(()))
-            .is_err()
-    );
+    assert!(convert([0, 1, 2, 3].iter().map(Ok::<&u32, ()>))
+        .any(|&i| Ok(i == 3))
+        .unwrap());
+    assert!(!convert([0, 1, 2, 4].iter().map(Ok::<&u32, ()>))
+        .any(|&i| Ok(i == 3))
+        .unwrap());
+    assert!(convert([0, 1, 2, 4].iter().map(Ok::<&u32, ()>))
+        .any(|_| Err(()))
+        .is_err());
 }
 
 #[test]
@@ -173,7 +162,8 @@ fn for_each() {
     it.for_each(|n| {
         acc.push(n);
         Ok(())
-    }).unwrap();
+    })
+    .unwrap();
     assert_eq!(acc, vec![0, 1, 2, 3]);
 }
 
@@ -359,7 +349,8 @@ fn step_by() {
         vec![0, 1, 2, 3, 4, 5, 6, 7, 8]
             .into_iter()
             .map(Ok::<i32, ()>),
-    ).step_by(3);
+    )
+    .step_by(3);
     assert_eq!(it.collect::<Vec<_>>(), Ok(vec![0, 3, 6]));
 }
 
@@ -384,4 +375,18 @@ fn take_while() {
         it.clone().take_while(|x| Ok(*x < 4)).collect::<Vec<_>>(),
         Ok(vec![0, 1, 2, 3, 0])
     );
+}
+
+#[test]
+fn flat_map() {
+    let it = convert(
+        vec![0..1, 0..0, 1..5]
+            .into_iter()
+            .map(Ok::<Range<i32>, ()>),
+    )
+    .flat_map(|r| Ok(convert(r.map(Ok::<i32, ()>))));
+    assert_eq!(
+        it.collect::<Vec<_>>(),
+        Ok(vec![0, 1, 2, 3, 4])
+    )
 }

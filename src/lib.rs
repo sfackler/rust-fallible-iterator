@@ -90,7 +90,7 @@ extern crate std;
 #[cfg(feature = "std")]
 mod imports {
     pub use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-    pub use std::hash::{Hash, BuildHasher};
+    pub use std::hash::{BuildHasher, Hash};
     pub use std::prelude::v1::*;
 }
 
@@ -348,6 +348,20 @@ pub trait FallibleIterator {
             it: self,
             f,
             state: initial_state,
+        }
+    }
+
+    /// Returns an iterator which maps this iterator's elements to iterators, yielding those iterators' values.
+    #[inline]
+    fn flat_map<U, F>(self, f: F) -> FlatMap<Self, U, F>
+    where
+        Self: Sized,
+        U: IntoFallibleIterator<Error = Self::Error>,
+        F: FnMut(Self::Item) -> Result<U, Self::Error>,
+    {
+        FlatMap {
+            it: self.map(f),
+            cur: None,
         }
     }
 
@@ -1345,6 +1359,41 @@ where
         }
 
         Ok(None)
+    }
+}
+
+/// An iterator which maps each element to another iterator, yielding that iterator's elements.
+#[derive(Clone)]
+pub struct FlatMap<I, U, F>
+where
+    U: IntoFallibleIterator,
+{
+    it: Map<I, F>,
+    cur: Option<U::IntoIter>,
+}
+
+impl<I, U, F> FallibleIterator for FlatMap<I, U, F>
+where
+    I: FallibleIterator,
+    U: IntoFallibleIterator<Error = I::Error>,
+    F: FnMut(I::Item) -> Result<U, I::Error>,
+{
+    type Item = U::Item;
+    type Error = U::Error;
+
+    #[inline]
+    fn next(&mut self) -> Result<Option<U::Item>, U::Error> {
+        loop {
+            if let Some(it) = &mut self.cur {
+                if let Some(v) = it.next()? {
+                    return Ok(Some(v));
+                }
+            }
+            match self.it.next()? {
+                Some(it) => self.cur = Some(it.into_fallible_iterator()),
+                None => return Ok(None),
+            }
+        }
     }
 }
 
