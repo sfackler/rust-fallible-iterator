@@ -365,6 +365,19 @@ pub trait FallibleIterator {
         }
     }
 
+    /// Returns an iterator which flattens an iterator of iterators, yielding those iterators' values.
+    #[inline]
+    fn flatten(self) -> Flatten<Self>
+    where
+        Self: Sized,
+        Self::Item: IntoFallibleIterator<Error = Self::Error>,
+    {
+        Flatten {
+            it: self,
+            cur: None,
+        }
+    }
+
     /// Returns an iterator which yields this iterator's elements and ends after
     /// the first `Ok(None)`.
     ///
@@ -1362,8 +1375,8 @@ where
     }
 }
 
-/// An iterator which maps each element to another iterator, yielding that iterator's elements.
-#[derive(Clone)]
+/// An iterator which maps each element to another iterator, yielding those iterator's elements.
+#[derive(Clone, Debug)]
 pub struct FlatMap<I, U, F>
 where
     U: IntoFallibleIterator,
@@ -1383,6 +1396,55 @@ where
 
     #[inline]
     fn next(&mut self) -> Result<Option<U::Item>, U::Error> {
+        loop {
+            if let Some(it) = &mut self.cur {
+                if let Some(v) = it.next()? {
+                    return Ok(Some(v));
+                }
+            }
+            match self.it.next()? {
+                Some(it) => self.cur = Some(it.into_fallible_iterator()),
+                None => return Ok(None),
+            }
+        }
+    }
+}
+
+/// An iterator which flattens an iterator of iterators, yielding those iterators' elements.
+pub struct Flatten<I>
+where
+    I: FallibleIterator,
+    I::Item: IntoFallibleIterator,
+{
+    it: I,
+    cur: Option<<I::Item as IntoFallibleIterator>::IntoIter>,
+}
+
+impl<I> Clone for Flatten<I>
+where
+    I: FallibleIterator + Clone,
+    I::Item: IntoFallibleIterator,
+    <I::Item as IntoFallibleIterator>::IntoIter: Clone,
+{
+    #[inline]
+    fn clone(&self) -> Flatten<I> {
+        Flatten {
+            it: self.it.clone(),
+            cur: self.cur.clone(),
+        }
+    }
+}
+
+impl<I> FallibleIterator for Flatten<I>
+where
+    I: FallibleIterator,
+    I::Item: IntoFallibleIterator<Error = I::Error>,
+{
+    type Item = <I::Item as IntoFallibleIterator>::Item;
+    type Error = <I::Item as IntoFallibleIterator>::Error;
+
+    #[inline]
+    fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
         loop {
             if let Some(it) = &mut self.cur {
                 if let Some(v) = it.next()? {
