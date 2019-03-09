@@ -95,7 +95,7 @@ mod imports {
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
-use imports::*;
+use crate::imports::*;
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 #[cfg(test)]
@@ -1949,4 +1949,4 @@ where
     }
 }
 
-fn _is_object_safe(_: &FallibleIterator<Item = (), Error = ()>) {}
+fn _is_object_safe(_: &dyn FallibleIterator<Item = (), Error = ()>) {}
