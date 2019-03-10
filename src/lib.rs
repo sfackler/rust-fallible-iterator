@@ -147,15 +147,11 @@ pub trait FallibleIterator {
 
     /// Returns the last element of the iterator.
     #[inline]
-    fn last(mut self) -> Result<Option<Self::Item>, Self::Error>
+    fn last(self) -> Result<Option<Self::Item>, Self::Error>
     where
         Self: Sized,
     {
-        let mut last = None;
-        while let Some(e) = self.next()? {
-            last = Some(e);
-        }
-        Ok(last)
+        self.fold(None, |_, v| Ok(Some(v)))
     }
 
     /// Returns the `n`th element of the iterator.
