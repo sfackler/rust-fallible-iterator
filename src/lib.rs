@@ -636,7 +636,7 @@ pub trait FallibleIterator {
     }
 
     /// Returns the element of the iterator which gives the minimum value from
-    /// the function. The function may fail; such failures are returned to the caller.
+    /// the function.
     #[inline]
     fn min_by_key<B, F>(mut self, mut f: F) -> Result<Option<Self::Item>, Self::Error>
     where
@@ -657,6 +657,27 @@ pub trait FallibleIterator {
         }
 
         Ok(Some(min.1))
+    }
+
+    /// Returns the element that gives the minimum value with respect to the function.
+    #[inline]
+    fn min_by<F>(mut self, mut f: F) -> Result<Option<Self::Item>, Self::Error>
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item, &Self::Item) -> Result<Ordering, Self::Error>,
+    {
+        let mut min= match self.next()? {
+            Some(v) => v,
+            None => return Ok(None),
+        };
+
+        while let Some(v) = self.next()? {
+            if f(&min, &v)? != Ordering::Less {
+                min = v;
+            }
+        }
+
+        Ok(Some(min))
     }
 
     /// Returns an iterator that yields this iterator's items in the opposite
