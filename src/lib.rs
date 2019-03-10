@@ -524,7 +524,7 @@ pub trait FallibleIterator {
     fn find_map<B, F>(&mut self, f: F) -> Result<Option<B>, Self::Error>
     where
         Self: Sized,
-        F: FnMut(Self::Item) -> Result<Option<B>, Self::Error>
+        F: FnMut(Self::Item) -> Result<Option<B>, Self::Error>,
     {
         self.filter_map(f).next()
     }
@@ -666,7 +666,7 @@ pub trait FallibleIterator {
         Self: Sized,
         F: FnMut(&Self::Item, &Self::Item) -> Result<Ordering, Self::Error>,
     {
-        let mut min= match self.next()? {
+        let mut min = match self.next()? {
             Some(v) => v,
             None => return Ok(None),
         };
@@ -688,6 +688,26 @@ pub trait FallibleIterator {
         Self: Sized + DoubleEndedFallibleIterator,
     {
         Rev(self)
+    }
+
+    /// Converts an iterator of pairs into a pair of containers.
+    #[inline]
+    fn unzip<A, B, FromA, FromB>(self) -> Result<(FromA, FromB), Self::Error>
+    where
+        Self: Sized + FallibleIterator<Item = (A, B)>,
+        FromA: Default + Extend<A>,
+        FromB: Default + Extend<B>,
+    {
+        let mut from_a = FromA::default();
+        let mut from_b = FromB::default();
+
+        self.for_each(|(a, b)| {
+            from_a.extend(Some(a));
+            from_b.extend(Some(b));
+            Ok(())
+        })?;
+
+        Ok((from_a, from_b))
     }
 
     /// Returns an iterator which clones all of its elements.
