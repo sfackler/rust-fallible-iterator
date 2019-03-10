@@ -101,6 +101,33 @@ use crate::imports::*;
 #[cfg(test)]
 mod test;
 
+enum FoldStop<T, E> {
+    Break(T),
+    Err(E),
+}
+
+impl<T, E> From<E> for FoldStop<T, E> {
+    #[inline]
+    fn from(e: E) -> FoldStop<T, E> {
+        FoldStop::Err(e)
+    }
+}
+
+trait ResultExt<T, E> {
+    fn unpack_fold(self) -> Result<T, E>;
+}
+
+impl<T, E> ResultExt<T, E> for Result<T, FoldStop<T, E>> {
+    #[inline]
+    fn unpack_fold(self) -> Result<T, E> {
+        match self {
+            Ok(v) => Ok(v),
+            Err(FoldStop::Break(v)) => Ok(v),
+            Err(FoldStop::Err(e)) => Err(e),
+        }
+    }
+}
+
 /// An `Iterator`-like trait that allows for calculation of items to fail.
 pub trait FallibleIterator {
     /// The type being iterated over.
@@ -446,15 +473,27 @@ pub trait FallibleIterator {
     /// Applies a function over the elements of the iterator, producing a single
     /// final value.
     #[inline]
-    fn fold<B, F>(mut self, mut init: B, mut f: F) -> Result<B, Self::Error>
+    fn fold<B, F>(mut self, init: B, f: F) -> Result<B, Self::Error>
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> Result<B, Self::Error>,
     {
+        self.try_fold(init, f)
+    }
+
+    /// Applies a function over the elements of the iterator, producing a single final value.
+    ///
+    /// This is used as the "base" of many methods on `FallibleIterator`.
+    #[inline]
+    fn try_fold<B, E, F>(&mut self, mut init: B, mut f: F) -> Result<B, E>
+    where
+        Self: Sized,
+        E: From<Self::Error>,
+        F: FnMut(B, Self::Item) -> Result<B, E>,
+    {
         while let Some(v) = self.next()? {
             init = f(init, v)?;
         }
-
         Ok(init)
     }
 
@@ -465,13 +504,14 @@ pub trait FallibleIterator {
         Self: Sized,
         F: FnMut(Self::Item) -> Result<bool, Self::Error>,
     {
-        while let Some(v) = self.next()? {
+        self.try_fold((), |(), v| {
             if !f(v)? {
-                return Ok(false);
+                return Err(FoldStop::Break(false));
             }
-        }
-
-        Ok(true)
+            Ok(())
+        })
+        .map(|()| true)
+        .unpack_fold()
     }
 
     /// Determines if any element of this iterator matches a predicate.
@@ -481,13 +521,14 @@ pub trait FallibleIterator {
         Self: Sized,
         F: FnMut(Self::Item) -> Result<bool, Self::Error>,
     {
-        while let Some(v) = self.next()? {
+        self.try_fold((), |(), v| {
             if f(v)? {
-                return Ok(true);
+                return Err(FoldStop::Break(true));
             }
-        }
-
-        Ok(false)
+            Ok(())
+        })
+        .map(|()| false)
+        .unpack_fold()
     }
 
     /// Returns the first element of the iterator that matches a predicate.
@@ -497,13 +538,14 @@ pub trait FallibleIterator {
         Self: Sized,
         F: FnMut(&Self::Item) -> Result<bool, Self::Error>,
     {
-        while let Some(v) = self.next()? {
+        self.try_fold((), |(), v| {
             if f(&v)? {
-                return Ok(Some(v));
+                return Err(FoldStop::Break(Some(v)));
             }
-        }
-
-        Ok(None)
+            Ok(())
+        })
+        .map(|()| None)
+        .unpack_fold()
     }
 
     /// Applies a function to the elements of the iterator, returning the first non-`None` result.
@@ -525,14 +567,14 @@ pub trait FallibleIterator {
         Self: Sized,
         F: FnMut(Self::Item) -> Result<bool, Self::Error>,
     {
-        let mut i = 0;
-        while let Some(v) = self.next()? {
+        self.try_fold(0, |n, v| {
             if f(v)? {
-                return Ok(Some(i));
+                return Err(FoldStop::Break(Some(n)));
             }
-            i += 1;
-        }
-        Ok(None)
+            Ok(n + 1)
+        })
+        .map(|_| None)
+        .unpack_fold()
     }
 
     /// Returns the maximal element of the iterator.
@@ -985,10 +1027,23 @@ pub trait DoubleEndedFallibleIterator: FallibleIterator {
 
     /// Applies a function over the elements of the iterator in reverse order, producing a single final value.
     #[inline]
-    fn rfold<B, F>(mut self, mut init: B, mut f: F) -> Result<B, Self::Error>
+    fn rfold<B, F>(mut self, init: B, f: F) -> Result<B, Self::Error>
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> Result<B, Self::Error>,
+    {
+        self.try_rfold(init, f)
+    }
+
+    /// Applies a function over the elements of the iterator in reverse, producing a single final value.
+    ///
+    /// This is used as the "base" of many methods on `DoubleEndedFallibleIterator`.
+    #[inline]
+    fn try_rfold<B, E, F>(&mut self, mut init: B, mut f: F) -> Result<B, E>
+    where
+        Self: Sized,
+        E: From<Self::Error>,
+        F: FnMut(B, Self::Item) -> Result<B, E>,
     {
         while let Some(v) = self.next_back()? {
             init = f(init, v)?;
@@ -1163,12 +1218,13 @@ where
     }
 
     #[inline]
-    fn fold<C, G>(mut self, init: C, mut f: G) -> Result<C, T::Error>
+    fn try_fold<C, E, G>(&mut self, init: C, mut f: G) -> Result<C, E>
     where
-        G: FnMut(C, B) -> Result<C, T::Error>,
+        E: From<T::Error>,
+        G: FnMut(C, B) -> Result<C, E>,
     {
         let map = &mut self.f;
-        self.it.fold(init, |b, v| f(b, map(v)?))
+        self.it.try_fold(init, |b, v| f(b, map(v)?))
     }
 }
 
@@ -1187,12 +1243,13 @@ where
     }
 
     #[inline]
-    fn rfold<C, G>(self, init: C, mut f: G) -> Result<C, I::Error>
+    fn try_rfold<C, E, G>(&mut self, init: C, mut f: G) -> Result<C, E>
     where
-        G: FnMut(C, B) -> Result<C, I::Error>,
+        E: From<I::Error>,
+        G: FnMut(C, B) -> Result<C, E>,
     {
-        let mut map = self.f;
-        self.it.rfold(init, |acc, v| f(acc, map(v)?))
+        let map = &mut self.f;
+        self.it.try_rfold(init, |acc, v| f(acc, map(v)?))
     }
 }
 
@@ -1258,17 +1315,19 @@ where
     }
 
     #[inline]
-    fn fold<B, F>(self, init: B, mut f: F) -> Result<B, T::Error>
+    fn try_fold<B, E, F>(&mut self, init: B, mut f: F) -> Result<B, E>
     where
-        F: FnMut(B, T::Item) -> Result<B, T::Error>,
+        E: From<T::Error>,
+        F: FnMut(B, T::Item) -> Result<B, E>,
     {
         match self.state {
             ChainState::Both => {
-                let init = self.front.fold(init, &mut f)?;
-                self.back.fold(init, f)
+                let init = self.front.try_fold(init, &mut f)?;
+                self.state = ChainState::Back;
+                self.back.try_fold(init, f)
             }
-            ChainState::Front => self.front.fold(init, f),
-            ChainState::Back => self.back.fold(init, f),
+            ChainState::Front => self.front.try_fold(init, f),
+            ChainState::Back => self.back.try_fold(init, f),
         }
     }
 
@@ -1324,17 +1383,19 @@ where
     }
 
     #[inline]
-    fn rfold<B, F>(self, init: B, mut f: F) -> Result<B, T::Error>
+    fn try_rfold<B, E, F>(&mut self, init: B, mut f: F) -> Result<B, E>
     where
-        F: FnMut(B, T::Item) -> Result<B, T::Error>,
+        E: From<T::Error>,
+        F: FnMut(B, T::Item) -> Result<B, E>,
     {
         match self.state {
             ChainState::Both => {
-                let init = self.back.rfold(init, &mut f)?;
-                self.front.rfold(init, f)
+                let init = self.back.try_rfold(init, &mut f)?;
+                self.state = ChainState::Front;
+                self.front.try_rfold(init, f)
             }
-            ChainState::Front => self.front.rfold(init, f),
-            ChainState::Back => self.back.rfold(init, f),
+            ChainState::Front => self.front.try_rfold(init, f),
+            ChainState::Back => self.back.try_rfold(init, f),
         }
     }
 }
@@ -1362,11 +1423,12 @@ where
     }
 
     #[inline]
-    fn fold<B, F>(self, init: B, mut f: F) -> Result<B, I::Error>
+    fn try_fold<B, E, F>(&mut self, init: B, mut f: F) -> Result<B, E>
     where
-        F: FnMut(B, T) -> Result<B, I::Error>,
+        E: From<I::Error>,
+        F: FnMut(B, T) -> Result<B, E>,
     {
-        self.0.fold(init, |acc, v| f(acc, v.clone()))
+        self.0.try_fold(init, |acc, v| f(acc, v.clone()))
     }
 }
 
@@ -1381,11 +1443,12 @@ where
     }
 
     #[inline]
-    fn rfold<B, F>(self, init: B, mut f: F) -> Result<B, I::Error>
+    fn try_rfold<B, E, F>(&mut self, init: B, mut f: F) -> Result<B, E>
     where
-        F: FnMut(B, T) -> Result<B, I::Error>,
+        E: From<I::Error>,
+        F: FnMut(B, T) -> Result<B, E>,
     {
-        self.0.rfold(init, |acc, v| f(acc, v.clone()))
+        self.0.try_rfold(init, |acc, v| f(acc, v.clone()))
     }
 }
 
@@ -1424,9 +1487,10 @@ where
     }
 
     #[inline]
-    fn fold<B, F>(mut self, init: B, mut f: F) -> Result<B, E>
+    fn try_fold<B, E2, F>(&mut self, init: B, mut f: F) -> Result<B, E2>
     where
-        F: FnMut(B, T) -> Result<B, E>,
+        E2: From<E>,
+        F: FnMut(B, T) -> Result<B, E2>,
     {
         self.0.try_fold(init, |acc, v| f(acc, v?))
     }
@@ -1446,9 +1510,10 @@ where
     }
 
     #[inline]
-    fn rfold<B, F>(mut self, init: B, mut f: F) -> Result<B, E>
+    fn try_rfold<B, E2, F>(&mut self, init: B, mut f: F) -> Result<B, E2>
     where
-        F: FnMut(B, T) -> Result<B, E>,
+        E2: From<E>,
+        F: FnMut(B, T) -> Result<B, E2>,
     {
         self.0.try_rfold(init, |acc, v| f(acc, v?))
     }
@@ -1503,14 +1568,15 @@ where
     }
 
     #[inline]
-    fn fold<B, F>(self, init: B, mut f: F) -> Result<B, I::Error>
+    fn try_fold<B, E, F>(&mut self, init: B, mut f: F) -> Result<B, E>
     where
-        F: FnMut(B, (usize, I::Item)) -> Result<B, I::Error>,
+        E: From<I::Error>,
+        F: FnMut(B, (usize, I::Item)) -> Result<B, E>,
     {
-        let mut n = self.n;
-        self.it.fold(init, |acc, v| {
-            let i = n;
-            n += 1;
+        let n = &mut self.n;
+        self.it.try_fold(init, |acc, v| {
+            let i = *n;
+            *n += 1;
             f(acc, (i, v))
         })
     }
@@ -1534,13 +1600,16 @@ where
 
     #[inline]
     fn next(&mut self) -> Result<Option<I::Item>, I::Error> {
-        while let Some(v) = self.it.next()? {
-            if (self.f)(&v)? {
-                return Ok(Some(v));
-            }
-        }
-
-        Ok(None)
+        let filter = &mut self.f;
+        self.it
+            .try_fold((), |(), v| {
+                if filter(&v)? {
+                    return Err(FoldStop::Break(Some(v)));
+                }
+                Ok(())
+            })
+            .map(|()| None)
+            .unpack_fold()
     }
 
     #[inline]
@@ -1549,12 +1618,13 @@ where
     }
 
     #[inline]
-    fn fold<B, G>(self, init: B, mut f: G) -> Result<B, I::Error>
+    fn try_fold<B, E, G>(&mut self, init: B, mut f: G) -> Result<B, E>
     where
-        G: FnMut(B, I::Item) -> Result<B, I::Error>,
+        E: From<I::Error>,
+        G: FnMut(B, I::Item) -> Result<B, E>,
     {
-        let mut predicate = self.f;
-        self.it.fold(
+        let predicate = &mut self.f;
+        self.it.try_fold(
             init,
             |acc, v| {
                 if predicate(&v)? {
@@ -1574,22 +1644,26 @@ where
 {
     #[inline]
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
-        while let Some(v) = self.it.next_back()? {
-            if (self.f)(&v)? {
-                return Ok(Some(v));
-            }
-        }
-
-        Ok(None)
+        let filter = &mut self.f;
+        self.it
+            .try_rfold((), |(), v| {
+                if filter(&v)? {
+                    return Err(FoldStop::Break(Some(v)));
+                }
+                Ok(())
+            })
+            .map(|()| None)
+            .unpack_fold()
     }
 
     #[inline]
-    fn rfold<B, G>(self, init: B, mut f: G) -> Result<B, I::Error>
+    fn try_rfold<B, E, G>(&mut self, init: B, mut f: G) -> Result<B, E>
     where
-        G: FnMut(B, I::Item) -> Result<B, I::Error>,
+        E: From<I::Error>,
+        G: FnMut(B, I::Item) -> Result<B, E>,
     {
-        let mut predicate = self.f;
-        self.it.rfold(
+        let predicate = &mut self.f;
+        self.it.try_rfold(
             init,
             |acc, v| {
                 if predicate(&v)? {
@@ -1620,13 +1694,14 @@ where
 
     #[inline]
     fn next(&mut self) -> Result<Option<B>, I::Error> {
-        while let Some(v) = self.it.next()? {
-            if let Some(v) = (self.f)(v)? {
-                return Ok(Some(v));
-            }
-        }
-
-        Ok(None)
+        let map = &mut self.f;
+        self.it
+            .try_fold((), |(), v| match map(v)? {
+                Some(v) => Err(FoldStop::Break(Some(v))),
+                None => Ok(()),
+            })
+            .map(|()| None)
+            .unpack_fold()
     }
 
     #[inline]
@@ -1635,12 +1710,13 @@ where
     }
 
     #[inline]
-    fn fold<C, G>(self, init: C, mut f: G) -> Result<C, I::Error>
+    fn try_fold<C, E, G>(&mut self, init: C, mut f: G) -> Result<C, E>
     where
-        G: FnMut(C, B) -> Result<C, I::Error>,
+        E: From<I::Error>,
+        G: FnMut(C, B) -> Result<C, E>,
     {
-        let mut map = self.f;
-        self.it.fold(init, |acc, v| match map(v)? {
+        let map = &mut self.f;
+        self.it.try_fold(init, |acc, v| match map(v)? {
             Some(v) => f(acc, v),
             None => Ok(acc),
         })
@@ -1654,22 +1730,24 @@ where
 {
     #[inline]
     fn next_back(&mut self) -> Result<Option<B>, I::Error> {
-        while let Some(v) = self.it.next_back()? {
-            if let Some(v) = (self.f)(v)? {
-                return Ok(Some(v));
-            }
-        }
-
-        Ok(None)
+        let map = &mut self.f;
+        self.it
+            .try_rfold((), |(), v| match map(v)? {
+                Some(v) => Err(FoldStop::Break(Some(v))),
+                None => Ok(()),
+            })
+            .map(|()| None)
+            .unpack_fold()
     }
 
     #[inline]
-    fn rfold<C, G>(self, init: C, mut f: G) -> Result<C, I::Error>
+    fn try_rfold<C, E, G>(&mut self, init: C, mut f: G) -> Result<C, E>
     where
-        G: FnMut(C, B) -> Result<C, I::Error>,
+        E: From<I::Error>,
+        G: FnMut(C, B) -> Result<C, E>,
     {
-        let mut map = self.f;
-        self.it.rfold(init, |acc, v| match map(v)? {
+        let map = &mut self.f;
+        self.it.try_rfold(init, |acc, v| match map(v)? {
             Some(v) => f(acc, v),
             None => Ok(acc),
         })
@@ -1711,13 +1789,28 @@ where
     }
 
     #[inline]
-    fn fold<B, G>(self, init: B, mut f: G) -> Result<B, U::Error>
+    fn try_fold<B, E, G>(&mut self, init: B, mut f: G) -> Result<B, E>
     where
-        G: FnMut(B, U::Item) -> Result<B, U::Error>,
+        E: From<U::Error>,
+        G: FnMut(B, U::Item) -> Result<B, E>,
     {
-        convert(self.cur.into_iter().map(Ok))
-            .chain(self.it.map(|i| Ok(i.into_fallible_iter())))
-            .fold(init, |acc, it| it.fold(acc, &mut f))
+        let mut acc = init;
+        if let Some(cur) = &mut self.cur {
+            acc = cur.try_fold(acc, &mut f)?;
+            self.cur = None;
+        }
+
+        let cur = &mut self.cur;
+        self.it.try_fold(acc, |acc, v| {
+            let mut it = v.into_fallible_iter();
+            match it.try_fold(acc, &mut f) {
+                Ok(acc) => Ok(acc),
+                Err(e) => {
+                    *cur = Some(it);
+                    Err(e)
+                }
+            }
+        })
     }
 }
 
@@ -1770,13 +1863,28 @@ where
     }
 
     #[inline]
-    fn fold<B, F>(self, init: B, mut f: F) -> Result<B, Self::Error>
+    fn try_fold<B, E, G>(&mut self, init: B, mut f: G) -> Result<B, E>
     where
-        F: FnMut(B, Self::Item) -> Result<B, Self::Error>,
+        E: From<Self::Error>,
+        G: FnMut(B, Self::Item) -> Result<B, E>,
     {
-        convert(self.cur.into_iter().map(Ok))
-            .chain(self.it.map(|i| Ok(i.into_fallible_iter())))
-            .fold(init, |acc, it| it.fold(acc, &mut f))
+        let mut acc = init;
+        if let Some(cur) = &mut self.cur {
+            acc = cur.try_fold(acc, &mut f)?;
+            self.cur = None;
+        }
+
+        let cur = &mut self.cur;
+        self.it.try_fold(acc, |acc, v| {
+            let mut it = v.into_fallible_iter();
+            match it.try_fold(acc, &mut f) {
+                Ok(acc) => Ok(acc),
+                Err(e) => {
+                    *cur = Some(it);
+                    Err(e)
+                }
+            }
+        })
     }
 }
 
@@ -1801,13 +1909,12 @@ where
             return Ok(None);
         }
 
-        match self.it.next() {
-            Ok(Some(i)) => Ok(Some(i)),
-            Ok(None) => {
+        match self.it.next()? {
+            Some(i) => Ok(Some(i)),
+            None => {
                 self.done = true;
                 Ok(None)
             }
-            Err(e) => Err(e),
         }
     }
 
@@ -1852,14 +1959,15 @@ where
     }
 
     #[inline]
-    fn fold<B, F>(self, init: B, f: F) -> Result<B, I::Error>
+    fn try_fold<B, E, F>(&mut self, init: B, f: F) -> Result<B, E>
     where
-        F: FnMut(B, I::Item) -> Result<B, I::Error>,
+        E: From<I::Error>,
+        F: FnMut(B, I::Item) -> Result<B, E>,
     {
         if self.done {
             Ok(init)
         } else {
-            self.it.fold(init, f)
+            self.it.try_fold(init, f)
         }
     }
 }
@@ -1896,12 +2004,13 @@ where
     }
 
     #[inline]
-    fn fold<B, G>(self, init: B, mut f: G) -> Result<B, I::Error>
+    fn try_fold<B, E, G>(&mut self, init: B, mut f: G) -> Result<B, E>
     where
-        G: FnMut(B, I::Item) -> Result<B, I::Error>,
+        E: From<I::Error>,
+        G: FnMut(B, I::Item) -> Result<B, E>,
     {
-        let mut inspect = self.f;
-        self.it.fold(init, |acc, v| {
+        let inspect = &mut self.f;
+        self.it.try_fold(init, |acc, v| {
             inspect(&v)?;
             f(acc, v)
         })
@@ -1925,12 +2034,13 @@ where
     }
 
     #[inline]
-    fn rfold<B, G>(self, init: B, mut f: G) -> Result<B, I::Error>
+    fn try_rfold<B, E, G>(&mut self, init: B, mut f: G) -> Result<B, E>
     where
-        G: FnMut(B, I::Item) -> Result<B, I::Error>,
+        E: From<I::Error>,
+        G: FnMut(B, I::Item) -> Result<B, E>,
     {
-        let mut inspect = self.f;
-        self.it.rfold(init, |acc, v| {
+        let inspect = &mut self.f;
+        self.it.try_rfold(init, |acc, v| {
             inspect(&v)?;
             f(acc, v)
         })
@@ -2016,6 +2126,20 @@ where
     fn nth(&mut self, n: usize) -> Result<Option<I::Item>, B> {
         self.it.nth(n).map_err(&mut self.f)
     }
+
+    #[inline]
+    fn try_fold<C, E, G>(&mut self, init: C, mut f: G) -> Result<C, E>
+    where
+        E: From<B>,
+        G: FnMut(C, I::Item) -> Result<C, E>,
+    {
+        self.it
+            .try_fold(init, |acc, v| f(acc, v).map_err(MappedErr::Fold))
+            .map_err(|e| match e {
+                MappedErr::It(e) => (self.f)(e).into(),
+                MappedErr::Fold(e) => e,
+            })
+    }
 }
 
 impl<B, F, I> DoubleEndedFallibleIterator for MapErr<I, F>
@@ -2026,6 +2150,32 @@ where
     #[inline]
     fn next_back(&mut self) -> Result<Option<I::Item>, B> {
         self.it.next_back().map_err(&mut self.f)
+    }
+
+    #[inline]
+    fn try_rfold<C, E, G>(&mut self, init: C, mut f: G) -> Result<C, E>
+    where
+        E: From<B>,
+        G: FnMut(C, I::Item) -> Result<C, E>,
+    {
+        self.it
+            .try_rfold(init, |acc, v| f(acc, v).map_err(MappedErr::Fold))
+            .map_err(|e| match e {
+                MappedErr::It(e) => (self.f)(e).into(),
+                MappedErr::Fold(e) => e,
+            })
+    }
+}
+
+enum MappedErr<T, U> {
+    It(T),
+    Fold(U),
+}
+
+impl<T, U> From<T> for MappedErr<T, U> {
+    #[inline]
+    fn from(t: T) -> MappedErr<T, U> {
+        MappedErr::It(t)
     }
 }
 
@@ -2076,6 +2226,19 @@ where
         }
         hint
     }
+
+    #[inline]
+    fn try_fold<B, E, F>(&mut self, init: B, mut f: F) -> Result<B, E>
+    where
+        E: From<I::Error>,
+        F: FnMut(B, I::Item) -> Result<B, E>,
+    {
+        let mut acc = init;
+        if let Some(v) = self.next.take() {
+            acc = f(acc, v)?;
+        }
+        self.it.try_fold(acc, f)
+    }
 }
 
 /// An iterator which yields elements of the underlying iterator in reverse
@@ -2106,11 +2269,12 @@ where
     }
 
     #[inline]
-    fn fold<B, F>(self, init: B, f: F) -> Result<B, I::Error>
+    fn try_fold<B, E, F>(&mut self, init: B, f: F) -> Result<B, E>
     where
-        F: FnMut(B, I::Item) -> Result<B, I::Error>,
+        E: From<I::Error>,
+        F: FnMut(B, I::Item) -> Result<B, E>,
     {
-        self.0.rfold(init, f)
+        self.0.try_rfold(init, f)
     }
 }
 
@@ -2124,11 +2288,12 @@ where
     }
 
     #[inline]
-    fn rfold<B, F>(self, init: B, f: F) -> Result<B, I::Error>
+    fn try_rfold<B, E, F>(&mut self, init: B, f: F) -> Result<B, E>
     where
-        F: FnMut(B, I::Item) -> Result<B, I::Error>,
+        E: From<I::Error>,
+        F: FnMut(B, I::Item) -> Result<B, E>,
     {
-        self.0.fold(init, f)
+        self.0.try_fold(init, f)
     }
 }
 
@@ -2438,4 +2603,4 @@ where
     }
 }
 
-fn _is_object_safe(_: &dyn FallibleIterator<Item = (), Error = ()>) {}
+fn _is_object_safe(_: &dyn DoubleEndedFallibleIterator<Item = (), Error = ()>) {}
