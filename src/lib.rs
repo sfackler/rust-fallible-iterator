@@ -953,7 +953,7 @@ pub trait FallibleIterator {
     }
 }
 
-impl<'a, I: FallibleIterator + ?Sized> FallibleIterator for &'a mut I {
+impl<I: FallibleIterator + ?Sized> FallibleIterator for &mut I {
     type Item = I::Item;
     type Error = I::Error;
 
@@ -968,7 +968,7 @@ impl<'a, I: FallibleIterator + ?Sized> FallibleIterator for &'a mut I {
     }
 }
 
-impl<'a, I: DoubleEndedFallibleIterator + ?Sized> DoubleEndedFallibleIterator for &'a mut I {
+impl<I: DoubleEndedFallibleIterator + ?Sized> DoubleEndedFallibleIterator for &mut I {
     #[inline]
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
         (**self).next_back()
