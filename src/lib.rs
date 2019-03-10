@@ -63,7 +63,7 @@
 //! let big_numbers = numbers.filter(|n| Ok(u64::from_str(n)? > 100));
 //! assert!(big_numbers.count().is_err());
 //! ```
-#![doc(html_root_url = "https://docs.rs/fallible-iterator/0.1")]
+#![doc(html_root_url = "https://docs.rs/fallible-iterator/0.2")]
 #![warn(missing_docs)]
 #![cfg_attr(feature = "alloc", feature(alloc))]
 #![no_std]
@@ -444,7 +444,7 @@ pub trait FallibleIterator {
         T: FromFallibleIterator<Self::Item>,
         Self: Sized,
     {
-        T::from_fallible_iterator(self)
+        T::from_fallible_iter(self)
     }
 
     /// Transforms the iterator into two collections, partitioning elements by a closure.
@@ -1055,7 +1055,7 @@ pub trait DoubleEndedFallibleIterator: FallibleIterator {
 /// Conversion from a fallible iterator.
 pub trait FromFallibleIterator<T>: Sized {
     /// Creates a value from a fallible iterator.
-    fn from_fallible_iterator<I>(it: I) -> Result<Self, I::Error>
+    fn from_fallible_iter<I>(it: I) -> Result<Self, I::Error>
     where
         I: IntoFallibleIterator<Item = T>;
 }
@@ -1063,7 +1063,7 @@ pub trait FromFallibleIterator<T>: Sized {
 #[cfg(any(feature = "std", feature = "alloc"))]
 impl<T> FromFallibleIterator<T> for Vec<T> {
     #[inline]
-    fn from_fallible_iterator<I>(it: I) -> Result<Vec<T>, I::Error>
+    fn from_fallible_iter<I>(it: I) -> Result<Vec<T>, I::Error>
     where
         I: IntoFallibleIterator<Item = T>,
     {
@@ -1081,7 +1081,7 @@ where
     S: BuildHasher + Default,
 {
     #[inline]
-    fn from_fallible_iterator<I>(it: I) -> Result<HashSet<T, S>, I::Error>
+    fn from_fallible_iter<I>(it: I) -> Result<HashSet<T, S>, I::Error>
     where
         I: IntoFallibleIterator<Item = T>,
     {
@@ -1103,7 +1103,7 @@ where
     S: BuildHasher + Default,
 {
     #[inline]
-    fn from_fallible_iterator<I>(it: I) -> Result<HashMap<K, V, S>, I::Error>
+    fn from_fallible_iter<I>(it: I) -> Result<HashMap<K, V, S>, I::Error>
     where
         I: IntoFallibleIterator<Item = (K, V)>,
     {
@@ -1124,7 +1124,7 @@ where
     T: Ord,
 {
     #[inline]
-    fn from_fallible_iterator<I>(it: I) -> Result<BTreeSet<T>, I::Error>
+    fn from_fallible_iter<I>(it: I) -> Result<BTreeSet<T>, I::Error>
     where
         I: IntoFallibleIterator<Item = T>,
     {
@@ -1144,7 +1144,7 @@ where
     K: Ord,
 {
     #[inline]
-    fn from_fallible_iterator<I>(it: I) -> Result<BTreeMap<K, V>, I::Error>
+    fn from_fallible_iter<I>(it: I) -> Result<BTreeMap<K, V>, I::Error>
     where
         I: IntoFallibleIterator<Item = (K, V)>,
     {
