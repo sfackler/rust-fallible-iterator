@@ -378,16 +378,6 @@ pub trait FallibleIterator {
         }
     }
 
-    /// Returns an iterator which passes each element to a closure before returning it.
-    #[inline]
-    fn inspect<F>(self, f: F) -> Inspect<Self, F>
-    where
-        Self: Sized,
-        F: FnMut(&Self::Item) -> Result<(), Self::Error>,
-    {
-        Inspect { it: self, f }
-    }
-
     /// Returns an iterator which yields this iterator's elements and ends after
     /// the first `Ok(None)`.
     ///
@@ -403,6 +393,16 @@ pub trait FallibleIterator {
             it: self,
             done: false,
         }
+    }
+
+    /// Returns an iterator which passes each element to a closure before returning it.
+    #[inline]
+    fn inspect<F>(self, f: F) -> Inspect<Self, F>
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item) -> Result<(), Self::Error>,
+    {
+        Inspect { it: self, f }
     }
 
     /// Borrow an iterator rather than consuming it.
@@ -427,6 +427,29 @@ pub trait FallibleIterator {
         Self: Sized,
     {
         T::from_fallible_iterator(self)
+    }
+
+    /// Transforms the iterator into two collections, partitioning elements by a closure.
+    #[inline]
+    fn partition<B, F>(self, mut f: F) -> Result<(B, B), Self::Error>
+    where
+        Self: Sized,
+        B: Default + Extend<Self::Item>,
+        F: FnMut(&Self::Item) -> Result<bool, Self::Error>,
+    {
+        let mut a = B::default();
+        let mut b = B::default();
+
+        self.for_each(|i| {
+            if f(&i)? {
+                a.extend(Some(i));
+            } else {
+                b.extend(Some(i));
+            }
+            Ok(())
+        })?;
+
+        Ok((a, b))
     }
 
     /// Applies a function over the elements of the iterator, producing a single
