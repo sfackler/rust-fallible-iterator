@@ -569,29 +569,8 @@ pub trait FallibleIterator {
         Ok(Some(max))
     }
 
-    /// Returns the minimal element of the iterator.
-    #[inline]
-    fn min(mut self) -> Result<Option<Self::Item>, Self::Error>
-    where
-        Self: Sized,
-        Self::Item: Ord,
-    {
-        let mut min = match self.next()? {
-            Some(v) => v,
-            None => return Ok(None),
-        };
-
-        while let Some(v) = self.next()? {
-            if min > v {
-                min = v;
-            }
-        }
-
-        Ok(Some(min))
-    }
-
     /// Returns the element of the iterator which gives the maximum value from
-    /// the function. The function may fail; such failures are returned to the caller.
+    /// the function.
     #[inline]
     fn max_by_key<B, F>(mut self, mut f: F) -> Result<Option<Self::Item>, Self::Error>
     where
@@ -612,6 +591,48 @@ pub trait FallibleIterator {
         }
 
         Ok(Some(max.1))
+    }
+
+    /// Returns the element that gives the maximum value with respect to the function.
+    #[inline]
+    fn max_by<F>(mut self, mut f: F) -> Result<Option<Self::Item>, Self::Error>
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item, &Self::Item) -> Result<Ordering, Self::Error>,
+    {
+        let mut max = match self.next()? {
+            Some(v) => v,
+            None => return Ok(None),
+        };
+
+        while let Some(v) = self.next()? {
+            if f(&max, &v)? != Ordering::Greater {
+                max = v;
+            }
+        }
+
+        Ok(Some(max))
+    }
+
+    /// Returns the minimal element of the iterator.
+    #[inline]
+    fn min(mut self) -> Result<Option<Self::Item>, Self::Error>
+    where
+        Self: Sized,
+        Self::Item: Ord,
+    {
+        let mut min = match self.next()? {
+            Some(v) => v,
+            None => return Ok(None),
+        };
+
+        while let Some(v) = self.next()? {
+            if min > v {
+                min = v;
+            }
+        }
+
+        Ok(Some(min))
     }
 
     /// Returns the element of the iterator which gives the minimum value from
