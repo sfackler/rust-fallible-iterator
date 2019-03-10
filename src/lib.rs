@@ -982,6 +982,19 @@ impl<I: DoubleEndedFallibleIterator + ?Sized> DoubleEndedFallibleIterator for Bo
 pub trait DoubleEndedFallibleIterator: FallibleIterator {
     /// Advances the end of the iterator, returning the last value.
     fn next_back(&mut self) -> Result<Option<Self::Item>, Self::Error>;
+
+    /// Applies a function over the elements of the iterator in reverse order, producing a single final value.
+    #[inline]
+    fn rfold<B, F>(mut self, mut init: B, mut f: F) -> Result<B, Self::Error>
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> Result<B, Self::Error>,
+    {
+        while let Some(v) = self.next_back()? {
+            init = f(init, v)?;
+        }
+        Ok(init)
+    }
 }
 
 /// Conversion from a fallible iterator.
@@ -1172,6 +1185,15 @@ where
             Err(e) => Err(e),
         }
     }
+
+    #[inline]
+    fn rfold<C, G>(self, init: C, mut f: G) -> Result<C, I::Error>
+    where
+        G: FnMut(C, B) -> Result<C, I::Error>,
+    {
+        let mut map = self.f;
+        self.it.rfold(init, |acc, v| f(acc, map(v)?))
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1300,6 +1322,21 @@ where
             ChainState::Back => self.back.next_back(),
         }
     }
+
+    #[inline]
+    fn rfold<B, F>(self, init: B, mut f: F) -> Result<B, T::Error>
+    where
+        F: FnMut(B, T::Item) -> Result<B, T::Error>,
+    {
+        match self.state {
+            ChainState::Both => {
+                let init = self.back.rfold(init, &mut f)?;
+                self.front.rfold(init, f)
+            }
+            ChainState::Front => self.front.rfold(init, f),
+            ChainState::Back => self.back.rfold(init, f),
+        }
+    }
 }
 
 /// An iterator which clones the elements of the underlying iterator.
@@ -1341,6 +1378,14 @@ where
     #[inline]
     fn next_back(&mut self) -> Result<Option<T>, I::Error> {
         self.0.next_back().map(|o| o.cloned())
+    }
+
+    #[inline]
+    fn rfold<B, F>(self, init: B, mut f: F) -> Result<B, I::Error>
+    where
+        F: FnMut(B, T) -> Result<B, I::Error>,
+    {
+        self.0.rfold(init, |acc, v| f(acc, v.clone()))
     }
 }
 
@@ -1398,6 +1443,14 @@ where
             Some(Err(e)) => Err(e),
             None => Ok(None),
         }
+    }
+
+    #[inline]
+    fn rfold<B, F>(mut self, init: B, mut f: F) -> Result<B, E>
+    where
+        F: FnMut(B, T) -> Result<B, E>,
+    {
+        self.0.try_rfold(init, |acc, v| f(acc, v?))
     }
 }
 
@@ -1529,6 +1582,24 @@ where
 
         Ok(None)
     }
+
+    #[inline]
+    fn rfold<B, G>(self, init: B, mut f: G) -> Result<B, I::Error>
+    where
+        G: FnMut(B, I::Item) -> Result<B, I::Error>,
+    {
+        let mut predicate = self.f;
+        self.it.rfold(
+            init,
+            |acc, v| {
+                if predicate(&v)? {
+                    f(acc, v)
+                } else {
+                    Ok(acc)
+                }
+            },
+        )
+    }
 }
 
 /// An iterator which both filters and maps the values of the underlying
@@ -1590,6 +1661,18 @@ where
         }
 
         Ok(None)
+    }
+
+    #[inline]
+    fn rfold<C, G>(self, init: C, mut f: G) -> Result<C, I::Error>
+    where
+        G: FnMut(C, B) -> Result<C, I::Error>,
+    {
+        let mut map = self.f;
+        self.it.rfold(init, |acc, v| match map(v)? {
+            Some(v) => f(acc, v),
+            None => Ok(acc),
+        })
     }
 }
 
@@ -1840,6 +1923,18 @@ where
             None => Ok(None),
         }
     }
+
+    #[inline]
+    fn rfold<B, G>(self, init: B, mut f: G) -> Result<B, I::Error>
+    where
+        G: FnMut(B, I::Item) -> Result<B, I::Error>,
+    {
+        let mut inspect = self.f;
+        self.it.rfold(init, |acc, v| {
+            inspect(&v)?;
+            f(acc, v)
+        })
+    }
 }
 
 /// A normal (non-fallible) iterator which wraps a fallible iterator.
@@ -2009,6 +2104,14 @@ where
     fn count(self) -> Result<usize, I::Error> {
         self.0.count()
     }
+
+    #[inline]
+    fn fold<B, F>(self, init: B, f: F) -> Result<B, I::Error>
+    where
+        F: FnMut(B, I::Item) -> Result<B, I::Error>,
+    {
+        self.0.rfold(init, f)
+    }
 }
 
 impl<I> DoubleEndedFallibleIterator for Rev<I>
@@ -2018,6 +2121,14 @@ where
     #[inline]
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
         self.0.next()
+    }
+
+    #[inline]
+    fn rfold<B, F>(self, init: B, f: F) -> Result<B, I::Error>
+    where
+        F: FnMut(B, I::Item) -> Result<B, I::Error>,
+    {
+        self.0.fold(init, f)
     }
 }
 
