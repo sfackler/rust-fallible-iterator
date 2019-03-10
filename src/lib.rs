@@ -211,12 +211,12 @@ pub trait FallibleIterator {
     /// Returns an iterator that yields pairs of this iterator's and another
     /// iterator's values.
     #[inline]
-    fn zip<I>(self, o: I) -> Zip<Self, I::IntoIter>
+    fn zip<I>(self, o: I) -> Zip<Self, I::IntoFallibleIter>
     where
         Self: Sized,
         I: IntoFallibleIterator<Error = Self::Error>,
     {
-        Zip(self, o.into_fallible_iterator())
+        Zip(self, o.into_fallible_iter())
     }
 
     /// Returns an iterator which applies a fallible transform to the elements
@@ -741,7 +741,7 @@ pub trait FallibleIterator {
         I: IntoFallibleIterator<Item = Self::Item, Error = Self::Error>,
         Self::Item: Ord,
     {
-        let mut other = other.into_fallible_iterator();
+        let mut other = other.into_fallible_iter();
 
         loop {
             match (self.next()?, other.next()?) {
@@ -765,7 +765,7 @@ pub trait FallibleIterator {
         I: IntoFallibleIterator<Error = Self::Error>,
         Self::Item: PartialOrd<I::Item>,
     {
-        let mut other = other.into_fallible_iterator();
+        let mut other = other.into_fallible_iter();
 
         loop {
             match (self.next()?, other.next()?) {
@@ -789,7 +789,7 @@ pub trait FallibleIterator {
         I: IntoFallibleIterator<Error = Self::Error>,
         Self::Item: PartialEq<I::Item>,
     {
-        let mut other = other.into_fallible_iterator();
+        let mut other = other.into_fallible_iter();
 
         loop {
             match (self.next()?, other.next()?) {
@@ -813,7 +813,7 @@ pub trait FallibleIterator {
         I: IntoFallibleIterator<Error = Self::Error>,
         Self::Item: PartialEq<I::Item>,
     {
-        let mut other = other.into_fallible_iterator();
+        let mut other = other.into_fallible_iter();
 
         loop {
             match (self.next()?, other.next()?) {
@@ -837,7 +837,7 @@ pub trait FallibleIterator {
         I: IntoFallibleIterator<Error = Self::Error>,
         Self::Item: PartialOrd<I::Item>,
     {
-        let mut other = other.into_fallible_iterator();
+        let mut other = other.into_fallible_iter();
 
         loop {
             match (self.next()?, other.next()?) {
@@ -863,7 +863,7 @@ pub trait FallibleIterator {
         I: IntoFallibleIterator<Error = Self::Error>,
         Self::Item: PartialOrd<I::Item>,
     {
-        let mut other = other.into_fallible_iterator();
+        let mut other = other.into_fallible_iter();
 
         loop {
             match (self.next()?, other.next()?) {
@@ -889,7 +889,7 @@ pub trait FallibleIterator {
         I: IntoFallibleIterator<Error = Self::Error>,
         Self::Item: PartialOrd<I::Item>,
     {
-        let mut other = other.into_fallible_iterator();
+        let mut other = other.into_fallible_iter();
 
         loop {
             match (self.next()?, other.next()?) {
@@ -915,7 +915,7 @@ pub trait FallibleIterator {
         I: IntoFallibleIterator<Error = Self::Error>,
         Self::Item: PartialOrd<I::Item>,
     {
-        let mut other = other.into_fallible_iterator();
+        let mut other = other.into_fallible_iter();
 
         loop {
             match (self.next()?, other.next()?) {
@@ -1020,7 +1020,7 @@ impl<T> FromFallibleIterator<T> for Vec<T> {
     where
         I: IntoFallibleIterator<Item = T>,
     {
-        let mut it = it.into_fallible_iterator();
+        let mut it = it.into_fallible_iter();
         let mut vec = Vec::with_capacity(it.size_hint().0);
         while let Some(v) = it.next()? {
             vec.push(v);
@@ -1040,7 +1040,7 @@ where
     where
         I: IntoFallibleIterator<Item = T>,
     {
-        let mut it = it.into_fallible_iterator();
+        let mut it = it.into_fallible_iter();
         let mut set = HashSet::default();
         set.reserve(it.size_hint().0);
         while let Some(v) = it.next()? {
@@ -1061,7 +1061,7 @@ where
     where
         I: IntoFallibleIterator<Item = (K, V)>,
     {
-        let mut it = it.into_fallible_iterator();
+        let mut it = it.into_fallible_iter();
         let mut map = HashMap::default();
         map.reserve(it.size_hint().0);
         while let Some((k, v)) = it.next()? {
@@ -1081,7 +1081,7 @@ where
     where
         I: IntoFallibleIterator<Item = T>,
     {
-        let mut it = it.into_fallible_iterator();
+        let mut it = it.into_fallible_iter();
         let mut set = BTreeSet::new();
         while let Some(v) = it.next()? {
             set.insert(v);
@@ -1100,7 +1100,7 @@ where
     where
         I: IntoFallibleIterator<Item = (K, V)>,
     {
-        let mut it = it.into_fallible_iterator();
+        let mut it = it.into_fallible_iter();
         let mut map = BTreeMap::new();
         while let Some((k, v)) = it.next()? {
             map.insert(k, v);
@@ -1118,10 +1118,10 @@ pub trait IntoFallibleIterator {
     type Error;
 
     /// The iterator.
-    type IntoIter: FallibleIterator<Item = Self::Item, Error = Self::Error>;
+    type IntoFallibleIter: FallibleIterator<Item = Self::Item, Error = Self::Error>;
 
     /// Creates a fallible iterator from a value.
-    fn into_fallible_iterator(self) -> Self::IntoIter;
+    fn into_fallible_iter(self) -> Self::IntoFallibleIter;
 }
 
 impl<I> IntoFallibleIterator for I
@@ -1130,10 +1130,10 @@ where
 {
     type Item = I::Item;
     type Error = I::Error;
-    type IntoIter = I;
+    type IntoFallibleIter = I;
 
     #[inline]
-    fn into_fallible_iterator(self) -> I {
+    fn into_fallible_iter(self) -> I {
         self
     }
 }
@@ -1499,7 +1499,7 @@ where
     U: IntoFallibleIterator,
 {
     it: Map<I, F>,
-    cur: Option<U::IntoIter>,
+    cur: Option<U::IntoFallibleIter>,
 }
 
 impl<I, U, F> FallibleIterator for FlatMap<I, U, F>
@@ -1520,7 +1520,7 @@ where
                 }
             }
             match self.it.next()? {
-                Some(it) => self.cur = Some(it.into_fallible_iterator()),
+                Some(it) => self.cur = Some(it.into_fallible_iter()),
                 None => return Ok(None),
             }
         }
@@ -1534,14 +1534,14 @@ where
     I::Item: IntoFallibleIterator,
 {
     it: I,
-    cur: Option<<I::Item as IntoFallibleIterator>::IntoIter>,
+    cur: Option<<I::Item as IntoFallibleIterator>::IntoFallibleIter>,
 }
 
 impl<I> Clone for Flatten<I>
 where
     I: FallibleIterator + Clone,
     I::Item: IntoFallibleIterator,
-    <I::Item as IntoFallibleIterator>::IntoIter: Clone,
+    <I::Item as IntoFallibleIterator>::IntoFallibleIter: Clone,
 {
     #[inline]
     fn clone(&self) -> Flatten<I> {
@@ -1569,7 +1569,7 @@ where
                 }
             }
             match self.it.next()? {
-                Some(it) => self.cur = Some(it.into_fallible_iterator()),
+                Some(it) => self.cur = Some(it.into_fallible_iter()),
                 None => return Ok(None),
             }
         }
