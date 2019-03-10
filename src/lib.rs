@@ -519,6 +519,16 @@ pub trait FallibleIterator {
         Ok(None)
     }
 
+    /// Applies a function to the elements of the iterator, returning the first non-`None` result.
+    #[inline]
+    fn find_map<B, F>(&mut self, f: F) -> Result<Option<B>, Self::Error>
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> Result<Option<B>, Self::Error>
+    {
+        self.filter_map(f).next()
+    }
+
     /// Returns the position of the first element of this iterator that matches
     /// a predicate. The predicate may fail; such failures are returned to the
     /// caller.
