@@ -138,16 +138,11 @@ pub trait FallibleIterator {
 
     /// Consumes the iterator, returning the number of remaining items.
     #[inline]
-    fn count(mut self) -> Result<usize, Self::Error>
+    fn count(self) -> Result<usize, Self::Error>
     where
         Self: Sized,
     {
-        let mut count = 0;
-        while let Some(_) = self.next()? {
-            count += 1;
-        }
-
-        Ok(count)
+        self.fold(0, |n, _| Ok(n + 1))
     }
 
     /// Returns the last element of the iterator.
@@ -453,8 +448,7 @@ pub trait FallibleIterator {
     }
 
     /// Applies a function over the elements of the iterator, producing a single
-    /// final value. The function may fail; such failures are returned to the
-    /// caller.
+    /// final value.
     #[inline]
     fn fold<B, F>(mut self, mut init: B, mut f: F) -> Result<B, Self::Error>
     where
@@ -469,7 +463,6 @@ pub trait FallibleIterator {
     }
 
     /// Determines if all elements of this iterator match a predicate.
-    /// The predicate may fail; such failures are passed to the caller.
     #[inline]
     fn all<F>(&mut self, mut f: F) -> Result<bool, Self::Error>
     where
@@ -486,7 +479,6 @@ pub trait FallibleIterator {
     }
 
     /// Determines if any element of this iterator matches a predicate.
-    /// The predicate may fail; such failures are passed to the caller.
     #[inline]
     fn any<F>(&mut self, mut f: F) -> Result<bool, Self::Error>
     where
@@ -503,7 +495,6 @@ pub trait FallibleIterator {
     }
 
     /// Returns the first element of the iterator that matches a predicate.
-    /// The predicate may fail; such failures are passed along to the caller.
     #[inline]
     fn find<F>(&mut self, mut f: F) -> Result<Option<Self::Item>, Self::Error>
     where
@@ -550,23 +541,12 @@ pub trait FallibleIterator {
 
     /// Returns the maximal element of the iterator.
     #[inline]
-    fn max(mut self) -> Result<Option<Self::Item>, Self::Error>
+    fn max(self) -> Result<Option<Self::Item>, Self::Error>
     where
         Self: Sized,
         Self::Item: Ord,
     {
-        let mut max = match self.next()? {
-            Some(v) => v,
-            None => return Ok(None),
-        };
-
-        while let Some(v) = self.next()? {
-            if max < v {
-                max = v;
-            }
-        }
-
-        Ok(Some(max))
+        self.max_by(|a, b| Ok(a.cmp(b)))
     }
 
     /// Returns the element of the iterator which gives the maximum value from
@@ -578,19 +558,20 @@ pub trait FallibleIterator {
         B: Ord,
         F: FnMut(&Self::Item) -> Result<B, Self::Error>,
     {
-        let mut max = match self.next()? {
+        let max = match self.next()? {
             Some(v) => (f(&v)?, v),
             None => return Ok(None),
         };
 
-        while let Some(v) = self.next()? {
-            let b = f(&v)?;
-            if max.0 < b {
-                max = (b, v);
+        self.fold(max, |(key, max), v| {
+            let new_key = f(&v)?;
+            if key > new_key {
+                Ok((key, max))
+            } else {
+                Ok((new_key, v))
             }
-        }
-
-        Ok(Some(max.1))
+        })
+        .map(|v| Some(v.1))
     }
 
     /// Returns the element that gives the maximum value with respect to the function.
@@ -600,39 +581,29 @@ pub trait FallibleIterator {
         Self: Sized,
         F: FnMut(&Self::Item, &Self::Item) -> Result<Ordering, Self::Error>,
     {
-        let mut max = match self.next()? {
+        let max = match self.next()? {
             Some(v) => v,
             None => return Ok(None),
         };
 
-        while let Some(v) = self.next()? {
-            if f(&max, &v)? != Ordering::Greater {
-                max = v;
+        self.fold(max, |max, v| {
+            if f(&max, &v)? == Ordering::Greater {
+                Ok(max)
+            } else {
+                Ok(v)
             }
-        }
-
-        Ok(Some(max))
+        })
+        .map(Some)
     }
 
     /// Returns the minimal element of the iterator.
     #[inline]
-    fn min(mut self) -> Result<Option<Self::Item>, Self::Error>
+    fn min(self) -> Result<Option<Self::Item>, Self::Error>
     where
         Self: Sized,
         Self::Item: Ord,
     {
-        let mut min = match self.next()? {
-            Some(v) => v,
-            None => return Ok(None),
-        };
-
-        while let Some(v) = self.next()? {
-            if min > v {
-                min = v;
-            }
-        }
-
-        Ok(Some(min))
+        self.min_by(|a, b| Ok(a.cmp(b)))
     }
 
     /// Returns the element of the iterator which gives the minimum value from
@@ -644,19 +615,20 @@ pub trait FallibleIterator {
         B: Ord,
         F: FnMut(&Self::Item) -> Result<B, Self::Error>,
     {
-        let mut min = match self.next()? {
+        let min = match self.next()? {
             Some(v) => (f(&v)?, v),
             None => return Ok(None),
         };
 
-        while let Some(v) = self.next()? {
-            let b = f(&v)?;
-            if min.0 > b {
-                min = (b, v);
+        self.fold(min, |(key, min), v| {
+            let new_key = f(&v)?;
+            if key < new_key {
+                Ok((key, min))
+            } else {
+                Ok((new_key, v))
             }
-        }
-
-        Ok(Some(min.1))
+        })
+        .map(|v| Some(v.1))
     }
 
     /// Returns the element that gives the minimum value with respect to the function.
@@ -666,18 +638,19 @@ pub trait FallibleIterator {
         Self: Sized,
         F: FnMut(&Self::Item, &Self::Item) -> Result<Ordering, Self::Error>,
     {
-        let mut min = match self.next()? {
+        let min = match self.next()? {
             Some(v) => v,
             None => return Ok(None),
         };
 
-        while let Some(v) = self.next()? {
-            if f(&min, &v)? != Ordering::Less {
-                min = v;
+        self.fold(min, |min, v| {
+            if f(&min, &v)? == Ordering::Less {
+                Ok(min)
+            } else {
+                Ok(v)
             }
-        }
-
-        Ok(Some(min))
+        })
+        .map(Some)
     }
 
     /// Returns an iterator that yields this iterator's items in the opposite
@@ -966,6 +939,11 @@ impl<I: FallibleIterator + ?Sized> FallibleIterator for &mut I {
     fn size_hint(&self) -> (usize, Option<usize>) {
         (**self).size_hint()
     }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Result<Option<I::Item>, I::Error> {
+        (**self).nth(n)
+    }
 }
 
 impl<I: DoubleEndedFallibleIterator + ?Sized> DoubleEndedFallibleIterator for &mut I {
@@ -988,6 +966,11 @@ impl<I: FallibleIterator + ?Sized> FallibleIterator for Box<I> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (**self).size_hint()
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Result<Option<I::Item>, I::Error> {
+        (**self).nth(n)
     }
 }
 
@@ -1020,11 +1003,9 @@ impl<T> FromFallibleIterator<T> for Vec<T> {
     where
         I: IntoFallibleIterator<Item = T>,
     {
-        let mut it = it.into_fallible_iter();
+        let it = it.into_fallible_iter();
         let mut vec = Vec::with_capacity(it.size_hint().0);
-        while let Some(v) = it.next()? {
-            vec.push(v);
-        }
+        it.for_each(|v| Ok(vec.push(v)))?;
         Ok(vec)
     }
 }
@@ -1040,12 +1021,13 @@ where
     where
         I: IntoFallibleIterator<Item = T>,
     {
-        let mut it = it.into_fallible_iter();
+        let it = it.into_fallible_iter();
         let mut set = HashSet::default();
         set.reserve(it.size_hint().0);
-        while let Some(v) = it.next()? {
+        it.for_each(|v| {
             set.insert(v);
-        }
+            Ok(())
+        })?;
         Ok(set)
     }
 }
@@ -1061,12 +1043,13 @@ where
     where
         I: IntoFallibleIterator<Item = (K, V)>,
     {
-        let mut it = it.into_fallible_iter();
+        let it = it.into_fallible_iter();
         let mut map = HashMap::default();
         map.reserve(it.size_hint().0);
-        while let Some((k, v)) = it.next()? {
+        it.for_each(|(k, v)| {
             map.insert(k, v);
-        }
+            Ok(())
+        })?;
         Ok(map)
     }
 }
@@ -1081,11 +1064,12 @@ where
     where
         I: IntoFallibleIterator<Item = T>,
     {
-        let mut it = it.into_fallible_iter();
+        let it = it.into_fallible_iter();
         let mut set = BTreeSet::new();
-        while let Some(v) = it.next()? {
+        it.for_each(|v| {
             set.insert(v);
-        }
+            Ok(())
+        })?;
         Ok(set)
     }
 }
@@ -1100,11 +1084,12 @@ where
     where
         I: IntoFallibleIterator<Item = (K, V)>,
     {
-        let mut it = it.into_fallible_iter();
+        let it = it.into_fallible_iter();
         let mut map = BTreeMap::new();
-        while let Some((k, v)) = it.next()? {
+        it.for_each(|(k, v)| {
             map.insert(k, v);
-        }
+            Ok(())
+        })?;
         Ok(map)
     }
 }
@@ -1166,6 +1151,15 @@ where
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.it.size_hint()
+    }
+
+    #[inline]
+    fn fold<C, G>(mut self, init: C, mut f: G) -> Result<C, T::Error>
+    where
+        G: FnMut(C, B) -> Result<C, T::Error>,
+    {
+        let map = &mut self.f;
+        self.it.fold(init, |b, v| f(b, map(v)?))
     }
 }
 
@@ -1244,6 +1238,51 @@ where
             ChainState::Back => self.back.count(),
         }
     }
+
+    #[inline]
+    fn fold<B, F>(self, init: B, mut f: F) -> Result<B, T::Error>
+    where
+        F: FnMut(B, T::Item) -> Result<B, T::Error>,
+    {
+        match self.state {
+            ChainState::Both => {
+                let init = self.front.fold(init, &mut f)?;
+                self.back.fold(init, f)
+            }
+            ChainState::Front => self.front.fold(init, f),
+            ChainState::Back => self.back.fold(init, f),
+        }
+    }
+
+    #[inline]
+    fn find<F>(&mut self, mut f: F) -> Result<Option<T::Item>, T::Error>
+    where
+        F: FnMut(&T::Item) -> Result<bool, T::Error>,
+    {
+        match self.state {
+            ChainState::Both => match self.front.find(&mut f)? {
+                Some(v) => Ok(Some(v)),
+                None => {
+                    self.state = ChainState::Back;
+                    self.back.find(f)
+                }
+            },
+            ChainState::Front => self.front.find(f),
+            ChainState::Back => self.back.find(f),
+        }
+    }
+
+    #[inline]
+    fn last(self) -> Result<Option<T::Item>, T::Error> {
+        match self.state {
+            ChainState::Both => {
+                self.front.last()?;
+                self.back.last()
+            }
+            ChainState::Front => self.front.last(),
+            ChainState::Back => self.back.last(),
+        }
+    }
 }
 
 impl<T, U> DoubleEndedFallibleIterator for Chain<T, U>
@@ -1290,8 +1329,11 @@ where
     }
 
     #[inline]
-    fn count(self) -> Result<usize, I::Error> {
-        self.0.count()
+    fn fold<B, F>(self, init: B, mut f: F) -> Result<B, I::Error>
+    where
+        F: FnMut(B, T) -> Result<B, I::Error>,
+    {
+        self.0.fold(init, |acc, v| f(acc, v.clone()))
     }
 }
 
@@ -1338,6 +1380,14 @@ where
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.0.size_hint()
+    }
+
+    #[inline]
+    fn fold<B, F>(mut self, init: B, mut f: F) -> Result<B, E>
+    where
+        F: FnMut(B, T) -> Result<B, E>,
+    {
+        self.0.try_fold(init, |acc, v| f(acc, v?))
     }
 }
 
@@ -1390,6 +1440,31 @@ where
     fn count(self) -> Result<usize, I::Error> {
         self.it.count()
     }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Result<Option<(usize, I::Item)>, I::Error> {
+        match self.it.nth(n)? {
+            Some(v) => {
+                let i = self.n + n;
+                self.n = i + 1;
+                Ok(Some((i, v)))
+            }
+            None => Ok(None),
+        }
+    }
+
+    #[inline]
+    fn fold<B, F>(self, init: B, mut f: F) -> Result<B, I::Error>
+    where
+        F: FnMut(B, (usize, I::Item)) -> Result<B, I::Error>,
+    {
+        let mut n = self.n;
+        self.it.fold(init, |acc, v| {
+            let i = n;
+            n += 1;
+            f(acc, (i, v))
+        })
+    }
 }
 
 /// An iterator which uses a fallible predicate to determine which values of the
@@ -1422,6 +1497,24 @@ where
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (0, self.it.size_hint().1)
+    }
+
+    #[inline]
+    fn fold<B, G>(self, init: B, mut f: G) -> Result<B, I::Error>
+    where
+        G: FnMut(B, I::Item) -> Result<B, I::Error>,
+    {
+        let mut predicate = self.f;
+        self.it.fold(
+            init,
+            |acc, v| {
+                if predicate(&v)? {
+                    f(acc, v)
+                } else {
+                    Ok(acc)
+                }
+            },
+        )
     }
 }
 
@@ -1472,6 +1565,18 @@ where
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (0, self.it.size_hint().1)
+    }
+
+    #[inline]
+    fn fold<C, G>(self, init: C, mut f: G) -> Result<C, I::Error>
+    where
+        G: FnMut(C, B) -> Result<C, I::Error>,
+    {
+        let mut map = self.f;
+        self.it.fold(init, |acc, v| match map(v)? {
+            Some(v) => f(acc, v),
+            None => Ok(acc),
+        })
     }
 }
 
@@ -1525,6 +1630,16 @@ where
             }
         }
     }
+
+    #[inline]
+    fn fold<B, G>(self, init: B, mut f: G) -> Result<B, U::Error>
+    where
+        G: FnMut(B, U::Item) -> Result<B, U::Error>,
+    {
+        convert(self.cur.into_iter().map(Ok))
+            .chain(self.it.map(|i| Ok(i.into_fallible_iter())))
+            .fold(init, |acc, it| it.fold(acc, &mut f))
+    }
 }
 
 /// An iterator which flattens an iterator of iterators, yielding those iterators' elements.
@@ -1574,6 +1689,16 @@ where
             }
         }
     }
+
+    #[inline]
+    fn fold<B, F>(self, init: B, mut f: F) -> Result<B, Self::Error>
+    where
+        F: FnMut(B, Self::Item) -> Result<B, Self::Error>,
+    {
+        convert(self.cur.into_iter().map(Ok))
+            .chain(self.it.map(|i| Ok(i.into_fallible_iter())))
+            .fold(init, |acc, it| it.fold(acc, &mut f))
+    }
 }
 
 /// An iterator that yields `Ok(None)` forever after the underlying iterator
@@ -1609,7 +1734,11 @@ where
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.it.size_hint()
+        if self.done {
+            (0, Some(0))
+        } else {
+            self.it.size_hint()
+        }
     }
 
     #[inline]
@@ -1618,6 +1747,40 @@ where
             Ok(0)
         } else {
             self.it.count()
+        }
+    }
+
+    #[inline]
+    fn last(self) -> Result<Option<I::Item>, I::Error> {
+        if self.done {
+            Ok(None)
+        } else {
+            self.it.last()
+        }
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Result<Option<I::Item>, I::Error> {
+        if self.done {
+            Ok(None)
+        } else {
+            let v = self.it.nth(n)?;
+            if v.is_none() {
+                self.done = true;
+            }
+            Ok(v)
+        }
+    }
+
+    #[inline]
+    fn fold<B, F>(self, init: B, f: F) -> Result<B, I::Error>
+    where
+        F: FnMut(B, I::Item) -> Result<B, I::Error>,
+    {
+        if self.done {
+            Ok(init)
+        } else {
+            self.it.fold(init, f)
         }
     }
 }
@@ -1651,6 +1814,18 @@ where
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.it.size_hint()
+    }
+
+    #[inline]
+    fn fold<B, G>(self, init: B, mut f: G) -> Result<B, I::Error>
+    where
+        G: FnMut(B, I::Item) -> Result<B, I::Error>,
+    {
+        let mut inspect = self.f;
+        self.it.fold(init, |acc, v| {
+            inspect(&v)?;
+            f(acc, v)
+        })
     }
 }
 
@@ -1739,6 +1914,16 @@ where
     #[inline]
     fn count(mut self) -> Result<usize, B> {
         self.it.count().map_err(&mut self.f)
+    }
+
+    #[inline]
+    fn last(mut self) -> Result<Option<I::Item>, B> {
+        self.it.last().map_err(&mut self.f)
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Result<Option<I::Item>, B> {
+        self.it.nth(n).map_err(&mut self.f)
     }
 }
 
