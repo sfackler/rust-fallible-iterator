@@ -438,8 +438,18 @@ fn find_map() {
 
 #[test]
 fn unzip() {
-    let it = convert(vec![(0, 0), (1, -1), (2, -2), (3, -3)].into_iter().map(Ok::<_, ()>));
+    let it = convert(
+        vec![(0, 0), (1, -1), (2, -2), (3, -3)]
+            .into_iter()
+            .map(Ok::<_, ()>),
+    );
     let (pos, neg): (Vec<i32>, Vec<i32>) = it.unzip().unwrap();
     assert_eq!(pos, vec![0, 1, 2, 3]);
     assert_eq!(neg, vec![0, -1, -2, -3]);
+}
+
+#[test]
+fn cycle() {
+    let it = convert(vec![0, 1, 2, 3].into_iter().map(Ok::<i32, ()>)).cycle();
+    assert_eq!(it.take(6).clone().collect::<Vec<_>>(), Ok(vec![0, 1, 2, 3, 0, 1]));
 }

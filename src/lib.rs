@@ -720,6 +720,18 @@ pub trait FallibleIterator {
         Cloned(self)
     }
 
+    /// Returns an iterator which repeas this iterator endlessly.
+    #[inline]
+    fn cycle(self) -> Cycle<Self>
+    where
+        Self: Sized + Clone,
+    {
+        Cycle {
+            it: self.clone(),
+            cur: self,
+        }
+    }
+
     /// Lexicographically compares the elements of this iterator to that of
     /// another.
     #[inline]
@@ -2061,6 +2073,37 @@ where
             let hint = self.it.size_hint();
             (0, hint.1)
         }
+    }
+}
+
+/// An iterator which cycles another endlessly.
+#[derive(Clone, Debug)]
+pub struct Cycle<I> {
+    it: I,
+    cur: I,
+}
+
+impl<I> FallibleIterator for Cycle<I>
+where
+    I: FallibleIterator + Clone,
+{
+    type Item = I::Item;
+    type Error = I::Error;
+
+    #[inline]
+    fn next(&mut self) -> Result<Option<I::Item>, I::Error> {
+        match self.cur.next()? {
+            None => {
+                self.cur = self.it.clone();
+                self.cur.next()
+            }
+            Some(v) => Ok(Some(v)),
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (usize::max_value(), None)
     }
 }
 
