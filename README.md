@@ -2,7 +2,7 @@
 
 [![CircleCI](https://circleci.com/gh/sfackler/rust-fallible-iterator.svg?style=shield)](https://circleci.com/gh/sfackler/rust-fallible-iterator)
 
-[Documentation](https://sfackler.github.io/rust-fallible-iterator/doc/v0.1.3/fallible_iterator)
+[Documentation](https://docs.rs/fallible-iterator)
 
 "Fallible" iterators for Rust.
 
