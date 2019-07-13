@@ -496,6 +496,26 @@ pub trait FallibleIterator {
         Ok(init)
     }
 
+    /// Sums the elements of an iterator.
+    #[inline]
+    fn sum<S>(self) -> Result<S, Self::Error>
+    where
+        Self: Sized,
+        S: iter::Sum<Self::Item>,
+    {
+        iter::Sum::sum(self.iterator())
+    }
+
+    /// Iterates over the entire iterator, multiplying all the elements
+    #[inline]
+    fn product<P>(self) -> Result<P, Self::Error>
+    where
+        Self: Sized,
+        P: iter::Product<Self::Item>,
+    {
+        iter::Product::product(self.iterator())
+    }
+
     /// Determines if all elements of this iterator match a predicate.
     #[inline]
     fn all<F>(&mut self, mut f: F) -> Result<bool, Self::Error>
@@ -719,6 +739,17 @@ pub trait FallibleIterator {
 
         Ok((from_a, from_b))
     }
+
+    /// Creates an iterator which copies all of its elements.
+    #[inline]
+    fn copied<'a, T>(self) -> Copied<Self>
+    where
+        Self: Sized + FallibleIterator<Item = &'a T>,
+        T: 'a + Copy,
+    {
+        Copied(self)
+    }
+
 
     /// Returns an iterator which clones all of its elements.
     #[inline]
@@ -1396,6 +1427,58 @@ where
             ChainState::Front => self.front.try_rfold(init, f),
             ChainState::Back => self.back.try_rfold(init, f),
         }
+    }
+}
+
+/// An iterator that copies the elements of an underlying iterator.
+#[derive(Clone, Debug)]
+pub struct Copied<I>(I);
+
+impl<'a, T, I> FallibleIterator for Copied<I>
+where
+    I: FallibleIterator<Item = &'a T>,
+    T: 'a + Copy,
+{
+    type Item = T;
+    type Error = I::Error;
+
+    #[inline]
+    fn next(&mut self) -> Result<Option<T>, I::Error> {
+        self.0.next().map(|o| o.map(|i| *i))
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+
+    #[inline]
+    fn try_fold<B, E, F>(&mut self, init: B, mut f: F) -> Result<B, E>
+    where
+        E: From<I::Error>,
+        F: FnMut(B, T) -> Result<B, E>,
+    {
+        self.0.try_fold(init, |acc, v| f(acc, *v))
+    }
+}
+
+impl<'a, T, I> DoubleEndedFallibleIterator for Copied<I>
+where
+    I: DoubleEndedFallibleIterator<Item = &'a T>,
+    T: 'a + Copy,
+{
+    #[inline]
+    fn next_back(&mut self) -> Result<Option<T>, I::Error> {
+        self.0.next_back().map(|o| o.map(|i| *i))
+    }
+
+    #[inline]
+    fn try_rfold<B, E, F>(&mut self, init: B, mut f: F) -> Result<B, E>
+    where
+        E: From<I::Error>,
+        F: FnMut(B, T) -> Result<B, E>,
+    {
+        self.0.try_rfold(init, |acc, v| f(acc, *v))
     }
 }
 
