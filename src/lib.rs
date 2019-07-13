@@ -65,7 +65,6 @@
 //! ```
 #![doc(html_root_url = "https://docs.rs/fallible-iterator/0.2")]
 #![warn(missing_docs)]
-#![cfg_attr(feature = "alloc", feature(alloc))]
 #![no_std]
 
 use core::cmp::{self, Ordering};
