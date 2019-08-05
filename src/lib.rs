@@ -440,10 +440,10 @@ pub trait FallibleIterator {
     #[inline]
     fn collect<T>(self) -> Result<T, Self::Error>
     where
-        T: FromFallibleIterator<Self::Item>,
+        T: iter::FromIterator<Self::Item>,
         Self: Sized,
     {
-        T::from_fallible_iter(self)
+        self.iterator().collect()
     }
 
     /// Transforms the iterator into two collections, partitioning elements by a closure.
@@ -1048,112 +1048,6 @@ pub trait DoubleEndedFallibleIterator: FallibleIterator {
             init = f(init, v)?;
         }
         Ok(init)
-    }
-}
-
-/// Conversion from a fallible iterator.
-pub trait FromFallibleIterator<T>: Sized {
-    /// Creates a value from a fallible iterator.
-    fn from_fallible_iter<I>(it: I) -> Result<Self, I::Error>
-    where
-        I: IntoFallibleIterator<Item = T>;
-}
-
-#[cfg(any(feature = "std", feature = "alloc"))]
-impl<T> FromFallibleIterator<T> for Vec<T> {
-    #[inline]
-    fn from_fallible_iter<I>(it: I) -> Result<Vec<T>, I::Error>
-    where
-        I: IntoFallibleIterator<Item = T>,
-    {
-        let it = it.into_fallible_iter();
-        let mut vec = Vec::with_capacity(it.size_hint().0);
-        it.for_each(|v| Ok(vec.push(v)))?;
-        Ok(vec)
-    }
-}
-
-#[cfg(feature = "std")]
-impl<T, S> FromFallibleIterator<T> for HashSet<T, S>
-where
-    T: Hash + Eq,
-    S: BuildHasher + Default,
-{
-    #[inline]
-    fn from_fallible_iter<I>(it: I) -> Result<HashSet<T, S>, I::Error>
-    where
-        I: IntoFallibleIterator<Item = T>,
-    {
-        let it = it.into_fallible_iter();
-        let mut set = HashSet::default();
-        set.reserve(it.size_hint().0);
-        it.for_each(|v| {
-            set.insert(v);
-            Ok(())
-        })?;
-        Ok(set)
-    }
-}
-
-#[cfg(feature = "std")]
-impl<K, V, S> FromFallibleIterator<(K, V)> for HashMap<K, V, S>
-where
-    K: Hash + Eq,
-    S: BuildHasher + Default,
-{
-    #[inline]
-    fn from_fallible_iter<I>(it: I) -> Result<HashMap<K, V, S>, I::Error>
-    where
-        I: IntoFallibleIterator<Item = (K, V)>,
-    {
-        let it = it.into_fallible_iter();
-        let mut map = HashMap::default();
-        map.reserve(it.size_hint().0);
-        it.for_each(|(k, v)| {
-            map.insert(k, v);
-            Ok(())
-        })?;
-        Ok(map)
-    }
-}
-
-#[cfg(any(feature = "std", feature = "alloc"))]
-impl<T> FromFallibleIterator<T> for BTreeSet<T>
-where
-    T: Ord,
-{
-    #[inline]
-    fn from_fallible_iter<I>(it: I) -> Result<BTreeSet<T>, I::Error>
-    where
-        I: IntoFallibleIterator<Item = T>,
-    {
-        let it = it.into_fallible_iter();
-        let mut set = BTreeSet::new();
-        it.for_each(|v| {
-            set.insert(v);
-            Ok(())
-        })?;
-        Ok(set)
-    }
-}
-
-#[cfg(any(feature = "std", feature = "alloc"))]
-impl<K, V> FromFallibleIterator<(K, V)> for BTreeMap<K, V>
-where
-    K: Ord,
-{
-    #[inline]
-    fn from_fallible_iter<I>(it: I) -> Result<BTreeMap<K, V>, I::Error>
-    where
-        I: IntoFallibleIterator<Item = (K, V)>,
-    {
-        let it = it.into_fallible_iter();
-        let mut map = BTreeMap::new();
-        it.for_each(|(k, v)| {
-            map.insert(k, v);
-            Ok(())
-        })?;
-        Ok(map)
     }
 }
 
