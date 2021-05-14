@@ -2198,6 +2198,18 @@ where
 
         Ok(self.next.as_ref())
     }
+
+    /// Consume and return the next value of this iterator if a condition is true.
+    ///
+    /// If func returns true for the next value of this iterator, consume and return it. Otherwise, return None.
+    #[inline]
+    pub fn next_if<F>(&mut self, f: F) -> Result<Option<I::Item>, I::Error>
+    where F: Fn(&I::Item) -> bool {
+        match self.peek()? {
+            Some(item) if f(item) => self.next(),
+            _ => Ok(None),
+        }
+    }
 }
 
 impl<I> FallibleIterator for Peekable<I>
