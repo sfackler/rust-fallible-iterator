@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+* `FromFallibleIterator` trait is removed, `FallibleIterator::collect` now requires `std::iter::FromIterator`,
+  which has strictly more implementations.
+
 ## [v0.2.0] - 2019-03-10
 
 ### Changed
