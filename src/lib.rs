@@ -961,6 +961,16 @@ pub trait FallibleIterator {
     {
         MapErr { it: self, f: f }
     }
+
+    /// Returns an iterator which unwraps all of its elements.
+    #[inline]
+    fn unwrap<T>(self) -> Unwrap<Self>
+    where
+        Self: Sized + FallibleIterator<Item = T>,
+        Self::Error: core::fmt::Debug,
+    {
+        Unwrap(self)
+    }
 }
 
 impl<I: FallibleIterator + ?Sized> FallibleIterator for &mut I {
@@ -2539,6 +2549,30 @@ where
         };
 
         (low, high)
+    }
+}
+
+/// An iterator that unwraps every element yielded by the underlying
+/// FallibleIterator
+#[derive(Clone, Debug)]
+pub struct Unwrap<T>(T);
+
+impl<T> iter::Iterator for Unwrap<T>
+where
+    T: FallibleIterator,
+    T::Error: core::fmt::Debug,
+{
+    type Item = T::Item;
+
+    #[inline]
+    fn next(&mut self) -> Option<T::Item> {
+        self.0.next().unwrap()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (_, max) = self.0.size_hint();
+        (0, max)
     }
 }
 
