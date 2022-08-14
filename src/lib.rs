@@ -76,11 +76,7 @@ use core::{
 extern crate alloc;
 
 #[cfg(feature = "alloc")]
-pub use alloc::{
-    boxed::Box,
-    collections::{BTreeMap, BTreeSet},
-    vec::Vec,
-};
+use alloc::boxed::Box;
 
 #[cfg(all(test, feature = "alloc"))]
 mod test;
@@ -229,7 +225,7 @@ pub trait FallibleIterator {
         Self: Sized,
         F: FnMut(Self::Item) -> Result<B, Self::Error>,
     {
-        Map { it: self, f: f }
+        Map { it: self, f }
     }
 
     /// Calls a fallible closure on each element of an iterator.
@@ -251,7 +247,7 @@ pub trait FallibleIterator {
         Self: Sized,
         F: FnMut(&Self::Item) -> Result<bool, Self::Error>,
     {
-        Filter { it: self, f: f }
+        Filter { it: self, f }
     }
 
     /// Returns an iterator which both filters and maps. The closure may fail;
@@ -262,7 +258,7 @@ pub trait FallibleIterator {
         Self: Sized,
         F: FnMut(Self::Item) -> Result<Option<B>, Self::Error>,
     {
-        FilterMap { it: self, f: f }
+        FilterMap { it: self, f }
     }
 
     /// Returns an iterator which yields the current iteration count as well
@@ -944,7 +940,7 @@ pub trait FallibleIterator {
         F: FnMut(Self::Error) -> B,
         Self: Sized,
     {
-        MapErr { it: self, f: f }
+        MapErr { it: self, f }
     }
 
     /// Returns an iterator which unwraps all of its elements.
