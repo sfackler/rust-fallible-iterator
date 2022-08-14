@@ -67,37 +67,22 @@
 #![warn(missing_docs)]
 #![no_std]
 
-use core::cmp::{self, Ordering};
-use core::iter;
+use core::{
+    cmp::{self, Ordering},
+    iter,
+};
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-#[cfg_attr(test, macro_use)]
+#[cfg(feature = "alloc")]
 extern crate alloc;
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-mod imports {
-    pub use alloc::boxed::Box;
-    pub use alloc::collections::btree_map::BTreeMap;
-    pub use alloc::collections::btree_set::BTreeSet;
-    pub use alloc::vec::Vec;
-}
+#[cfg(feature = "alloc")]
+pub use alloc::{
+    boxed::Box,
+    collections::{BTreeMap, BTreeSet},
+    vec::Vec,
+};
 
-#[cfg(feature = "std")]
-#[cfg_attr(test, macro_use)]
-extern crate std;
-
-#[cfg(feature = "std")]
-mod imports {
-    pub use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-    pub use std::hash::{BuildHasher, Hash};
-    pub use std::prelude::v1::*;
-}
-
-#[cfg(any(feature = "std", feature = "alloc"))]
-use crate::imports::*;
-
-#[cfg(any(feature = "std", feature = "alloc"))]
-#[cfg(test)]
+#[cfg(all(test, feature = "alloc"))]
 mod test;
 
 enum FoldStop<T, E> {
@@ -1000,7 +985,7 @@ impl<I: DoubleEndedFallibleIterator + ?Sized> DoubleEndedFallibleIterator for &m
     }
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "alloc")]
 impl<I: FallibleIterator + ?Sized> FallibleIterator for Box<I> {
     type Item = I::Item;
     type Error = I::Error;
@@ -1021,7 +1006,7 @@ impl<I: FallibleIterator + ?Sized> FallibleIterator for Box<I> {
     }
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "alloc")]
 impl<I: DoubleEndedFallibleIterator + ?Sized> DoubleEndedFallibleIterator for Box<I> {
     #[inline]
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {

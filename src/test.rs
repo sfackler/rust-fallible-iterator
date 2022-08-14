@@ -1,5 +1,5 @@
-use core::iter;
-use core::ops::Range;
+use alloc::vec;
+use core::{iter, ops::Range};
 
 use super::{convert, FallibleIterator, Vec};
 
