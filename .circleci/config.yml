@@ -34,7 +34,6 @@ jobs:
     - run: rustc --version > ~/rust-version
     - *RESTORE_DEPS
     - run: cargo test
-    - run: cargo test --features std
     - *SAVE_DEPS
   nightly:
     docker:
@@ -49,7 +48,7 @@ jobs:
     - *SAVE_REGISTRY
     - run: rustc --version > ~/rust-version
     - *RESTORE_DEPS
-    - run: cargo test --features alloc
+    - run: cargo test
     - *SAVE_DEPS
 
 workflows:
