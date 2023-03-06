@@ -1791,7 +1791,7 @@ where
     }
 }
 
-/// Creates an iterator from a fallible function generating values
+/// Creates an iterator from a fallible function generating values.
 ///
 /// ```
 /// # use fallible_iterator::{from_fn, FallibleIterator};
