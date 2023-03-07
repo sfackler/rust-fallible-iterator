@@ -69,6 +69,7 @@
 
 use core::cmp::{self, Ordering};
 use core::iter;
+use core::marker::PhantomData;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 #[cfg_attr(test, macro_use)]
@@ -2598,3 +2599,129 @@ where
 }
 
 fn _is_object_safe(_: &dyn DoubleEndedFallibleIterator<Item = (), Error = ()>) {}
+
+/// An iterator that yields nothing.
+#[derive(Clone, Debug)]
+pub struct Empty<T, E>(PhantomData<T>, PhantomData<E>);
+
+impl<T, E> FallibleIterator for Empty<T, E> {
+    type Item = T;
+    type Error = E;
+
+    #[inline]
+    fn next(&mut self) -> Result<Option<T>, E> {
+        Ok(None)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(0))
+    }
+}
+
+/// Creates an iterator that yields nothing.
+pub fn empty<T, E>() -> Empty<T, E> {
+    Empty(PhantomData, PhantomData)
+}
+
+/// An iterator that yields something exactly once.
+#[derive(Clone, Debug)]
+pub struct Once<T, E>(Option<T>, PhantomData<E>);
+
+/// Creates an iterator that yields an element exactly once.
+pub fn once<T, E>(value: T) -> Once<T, E> {
+    Once(Some(value), PhantomData)
+}
+
+impl<T, E> FallibleIterator for Once<T, E> {
+    type Item = T;
+    type Error = E;
+
+    #[inline]
+    fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
+        Ok(self.0.take())
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self.0 {
+            Some(_) => (1, Some(1)),
+            None => (0, Some(0)),
+        }
+    }
+}
+
+/// An iterator that fails with a predetermined error exactly once.
+#[derive(Clone, Debug)]
+pub struct OnceErr<T, E>(PhantomData<T>, Option<E>);
+
+/// Creates an iterator that fails with a predetermined error exactly once.
+pub fn once_err<T, E>(value: E) -> OnceErr<T, E> {
+    OnceErr(PhantomData, Some(value))
+}
+
+impl<T, E> FallibleIterator for OnceErr<T, E> {
+    type Item = T;
+    type Error = E;
+    
+    #[inline]
+    fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
+        match self.1.take() {
+            Some(value) => Err(value),
+            None => Ok(None),
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(0))
+    }
+}
+
+/// An iterator that endlessly repeats a single element.
+#[derive(Clone, Debug)]
+pub struct Repeat<T: Clone, E>(T, PhantomData<E>);
+
+/// Creates an iterator that endlessly repeats a single element.
+pub fn repeat<T: Clone, E>(value: T) -> Repeat<T, E> {
+    Repeat(value, PhantomData)
+}
+
+impl<T: Clone, E> FallibleIterator for Repeat<T, E> {
+    type Item = T;
+    type Error = E;
+
+    #[inline]
+    fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
+        Ok(Some(self.0.clone()))
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (usize::MAX, None)
+    }
+}
+
+/// An iterator that endlessly repeats a single error.
+#[derive(Clone, Debug)]
+pub struct RepeatErr<T, E: Clone>(PhantomData<T>, E);
+
+/// Creates an iterator that endlessly repeats a single error.
+pub fn repeat_err<T, E: Clone>(value: E) -> RepeatErr<T, E> {
+    RepeatErr(PhantomData, value)
+}
+
+impl<T, E: Clone> FallibleIterator for RepeatErr<T, E> {
+    type Item = T;
+    type Error = E;
+
+    #[inline]
+    fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
+        Err(self.1.clone())
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(0))
+    }
+}
