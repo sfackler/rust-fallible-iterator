@@ -68,6 +68,7 @@
 #![no_std]
 
 use core::cmp::{self, Ordering};
+use core::convert::Infallible;
 use core::iter;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
@@ -2594,6 +2595,25 @@ where
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (_, max) = self.0.size_hint();
         (0, max)
+    }
+}
+
+/// wrap std::iter::iterator into a (in)FallibleIterator
+pub struct IntoFallible<I>(I);
+
+impl<I: std::iter::Iterator<Item = T>, T> FallibleIterator for IntoFallible<I> {
+    type Item = T;
+
+    type Error = Infallible;
+
+    fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
+       Ok(self.0.next())
+    }
+}
+
+impl<T, I: std::iter::Iterator<Item = T>> From<I> for IntoFallible<I> {
+    fn from(value: I) -> Self {
+        Self(value)
     }
 }
 

@@ -1,7 +1,7 @@
 use core::iter;
 use core::ops::Range;
 
-use super::{convert, FallibleIterator, Vec};
+use super::{convert, FallibleIterator, Vec, IntoFallible};
 
 #[test]
 fn all() {
@@ -469,4 +469,10 @@ fn unwrap_panic() {
     let _ = convert(vec![Ok(0), Err(())].into_iter())
         .unwrap()
         .collect::<Vec<_>>();
+}
+
+#[test]
+fn wrap_std_iter_into_fallible() {
+    let it = IntoFallible::from(vec![0, 1, 2, 3].into_iter());
+    assert_eq!(it.collect::<Vec<_>>().unwrap(),vec![0,1,2,3]);
 }
