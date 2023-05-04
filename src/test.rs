@@ -1,7 +1,7 @@
-use core::iter;
-use core::ops::Range;
+use alloc::{vec, vec::Vec};
+use core::{iter, ops::Range};
 
-use super::{convert, FallibleIterator, Vec};
+use super::{convert, FallibleIterator};
 
 #[test]
 fn all() {
@@ -241,8 +241,7 @@ fn max_by_key() {
     // Exercise failure both on the first item, and later.
     assert_eq!(it.clone().max_by_key(|&i| Err::<i32, _>(i)), Err(0));
     assert_eq!(
-        it.clone()
-            .max_by_key(|&i| if i > 0 { Err(i) } else { Ok(-i) }),
+        it.max_by_key(|&i| if i > 0 { Err(i) } else { Ok(-i) }),
         Err(3)
     );
 }
@@ -266,8 +265,7 @@ fn min_by_key() {
     // Exercise failure both on the first item, and later.
     assert_eq!(it.clone().min_by_key(|&i| Err::<i32, _>(i)), Err(0));
     assert_eq!(
-        it.clone()
-            .min_by_key(|&i| if i > 0 { Err(i) } else { Ok(-i) }),
+        it.min_by_key(|&i| if i > 0 { Err(i) } else { Ok(-i) }),
         Err(3)
     );
 }
@@ -304,15 +302,14 @@ fn position() {
     assert_eq!(it.position(|n| Ok(n == 3)).unwrap(), Some(0));
     assert_eq!(it.position(|n| Ok(n == 5)).unwrap(), None);
 
-    let it = convert(vec![1, 2, 3, 4].into_iter().map(Ok::<i32, i32>));
+    let mut it = convert(vec![1, 2, 3, 4].into_iter().map(Ok::<i32, i32>));
     assert_eq!(
         it.clone()
             .position(|n| if n == 3 { Err(42) } else { Ok(n == 2) }),
         Ok(Some(1))
     );
     assert_eq!(
-        it.clone()
-            .position(|n| if n == 3 { Err(42) } else { Ok(n == 4) }),
+        it.position(|n| if n == 3 { Err(42) } else { Ok(n == 4) }),
         Err(42)
     );
 }
@@ -335,7 +332,7 @@ fn skip() {
     let it = convert(vec![1, 2, 3, 4].into_iter().map(Ok::<i32, ()>));
     assert_eq!(it.clone().skip(0).collect::<Vec<_>>(), Ok(vec![1, 2, 3, 4]));
     assert_eq!(it.clone().skip(2).collect::<Vec<_>>(), Ok(vec![3, 4]));
-    assert_eq!(it.clone().skip(4).collect::<Vec<_>>(), Ok(vec![]));
+    assert_eq!(it.skip(4).collect::<Vec<_>>(), Ok(vec![]));
 }
 
 #[test]
@@ -350,7 +347,7 @@ fn skip_while() {
         Ok(vec![3, 4, 1])
     );
     assert_eq!(
-        it.clone().skip_while(|x| Ok(*x < 5)).collect::<Vec<_>>(),
+        it.skip_while(|x| Ok(*x < 5)).collect::<Vec<_>>(),
         Ok(vec![])
     );
 }
@@ -384,7 +381,7 @@ fn take_while() {
         Ok(vec![0, 1])
     );
     assert_eq!(
-        it.clone().take_while(|x| Ok(*x < 4)).collect::<Vec<_>>(),
+        it.take_while(|x| Ok(*x < 4)).collect::<Vec<_>>(),
         Ok(vec![0, 1, 2, 3, 0])
     );
 }
@@ -411,7 +408,10 @@ fn flatten() {
 #[test]
 fn inspect() {
     let mut buf = vec![];
-    let it = convert(vec![0, 1, 2, 3].into_iter().map(Ok::<i32, ()>)).inspect(|v| Ok(buf.push(*v)));
+    let it = convert(vec![0, 1, 2, 3].into_iter().map(Ok::<i32, ()>)).inspect(|&v| {
+        buf.push(v);
+        Ok(())
+    });
     it.count().unwrap();
     assert_eq!(buf, vec![0, 1, 2, 3]);
 }
@@ -451,10 +451,7 @@ fn unzip() {
 #[test]
 fn cycle() {
     let it = convert(vec![0, 1, 2, 3].into_iter().map(Ok::<i32, ()>)).cycle();
-    assert_eq!(
-        it.take(6).clone().collect::<Vec<_>>(),
-        Ok(vec![0, 1, 2, 3, 0, 1])
-    );
+    assert_eq!(it.take(6).collect::<Vec<_>>(), Ok(vec![0, 1, 2, 3, 0, 1]));
 }
 
 #[test]

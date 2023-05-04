@@ -22,7 +22,7 @@ version: 2
 jobs:
   stable:
     docker:
-    - image: rust:1.33.0
+    - image: rust:1.36.0
     environment:
       RUSTFLAGS: -D warnings
     working_directory: ~/build
@@ -34,7 +34,6 @@ jobs:
     - run: rustc --version > ~/rust-version
     - *RESTORE_DEPS
     - run: cargo test
-    - run: cargo test --features std
     - *SAVE_DEPS
   nightly:
     docker:
@@ -49,7 +48,7 @@ jobs:
     - *SAVE_REGISTRY
     - run: rustc --version > ~/rust-version
     - *RESTORE_DEPS
-    - run: cargo test --features alloc
+    - run: cargo test
     - *SAVE_DEPS
 
 workflows:

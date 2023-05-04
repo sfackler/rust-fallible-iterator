@@ -67,37 +67,18 @@
 #![warn(missing_docs)]
 #![no_std]
 
-use core::cmp::{self, Ordering};
-use core::iter;
+use core::{
+    cmp::{self, Ordering},
+    iter,
+};
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-#[cfg_attr(test, macro_use)]
+#[cfg(feature = "alloc")]
 extern crate alloc;
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-mod imports {
-    pub use alloc::boxed::Box;
-    pub use alloc::collections::btree_map::BTreeMap;
-    pub use alloc::collections::btree_set::BTreeSet;
-    pub use alloc::vec::Vec;
-}
+#[cfg(feature = "alloc")]
+use alloc::boxed::Box;
 
-#[cfg(feature = "std")]
-#[cfg_attr(test, macro_use)]
-extern crate std;
-
-#[cfg(feature = "std")]
-mod imports {
-    pub use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-    pub use std::hash::{BuildHasher, Hash};
-    pub use std::prelude::v1::*;
-}
-
-#[cfg(any(feature = "std", feature = "alloc"))]
-use crate::imports::*;
-
-#[cfg(any(feature = "std", feature = "alloc"))]
-#[cfg(test)]
+#[cfg(all(test, feature = "alloc"))]
 mod test;
 
 enum FoldStop<T, E> {
@@ -244,7 +225,7 @@ pub trait FallibleIterator {
         Self: Sized,
         F: FnMut(Self::Item) -> Result<B, Self::Error>,
     {
-        Map { it: self, f: f }
+        Map { it: self, f }
     }
 
     /// Calls a fallible closure on each element of an iterator.
@@ -266,7 +247,7 @@ pub trait FallibleIterator {
         Self: Sized,
         F: FnMut(&Self::Item) -> Result<bool, Self::Error>,
     {
-        Filter { it: self, f: f }
+        Filter { it: self, f }
     }
 
     /// Returns an iterator which both filters and maps. The closure may fail;
@@ -277,7 +258,7 @@ pub trait FallibleIterator {
         Self: Sized,
         F: FnMut(Self::Item) -> Result<Option<B>, Self::Error>,
     {
-        FilterMap { it: self, f: f }
+        FilterMap { it: self, f }
     }
 
     /// Returns an iterator which yields the current iteration count as well
@@ -959,7 +940,7 @@ pub trait FallibleIterator {
         F: FnMut(Self::Error) -> B,
         Self: Sized,
     {
-        MapErr { it: self, f: f }
+        MapErr { it: self, f }
     }
 
     /// Returns an iterator which unwraps all of its elements.
@@ -1000,7 +981,7 @@ impl<I: DoubleEndedFallibleIterator + ?Sized> DoubleEndedFallibleIterator for &m
     }
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "alloc")]
 impl<I: FallibleIterator + ?Sized> FallibleIterator for Box<I> {
     type Item = I::Item;
     type Error = I::Error;
@@ -1021,7 +1002,7 @@ impl<I: FallibleIterator + ?Sized> FallibleIterator for Box<I> {
     }
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "alloc")]
 impl<I: DoubleEndedFallibleIterator + ?Sized> DoubleEndedFallibleIterator for Box<I> {
     #[inline]
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
