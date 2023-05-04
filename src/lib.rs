@@ -121,7 +121,7 @@ pub trait FallibleIterator {
     /// Returns `Ok(None)` when iteration is finished.
     ///
     /// The behavior of calling this method after a previous call has returned
-    /// `Ok(None)` or `Err` is implemenetation defined.
+    /// `Ok(None)` or `Err` is implementation defined.
     fn next(&mut self) -> Result<Option<Self::Item>, Self::Error>;
 
     /// Returns bounds on the remaining length of the iterator.
@@ -711,7 +711,7 @@ pub trait FallibleIterator {
         Cloned(self)
     }
 
-    /// Returns an iterator which repeas this iterator endlessly.
+    /// Returns an iterator which repeats this iterator endlessly.
     #[inline]
     fn cycle(self) -> Cycle<Self>
     where
