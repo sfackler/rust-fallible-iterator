@@ -1409,6 +1409,58 @@ where
     }
 }
 
+
+/// A fallible iterator that wraps a normal iterator over `Result`s.
+#[derive(Clone, Debug)]
+pub struct IntoFallible<I>(I);
+
+impl<T, I> FallibleIterator for IntoFallible<I>
+where
+    I: iter::Iterator<Item = T>,
+{
+    type Item = T;
+    type Error = Never;
+
+    #[inline]
+    fn next(&mut self) -> Result<Option<T>, Self::Error> {
+        Ok(self.0.next())
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+
+    #[inline]
+    fn try_fold<B, E2, F>(&mut self, init: B, mut f: F) -> Result<B, E2>
+    where
+        E2: From<Never>,
+        F: FnMut(B, T) -> Result<B, E2>,
+    {
+        self.0.try_fold(init, |acc, v| f(acc, v))
+    }
+}
+
+impl<T, I> DoubleEndedFallibleIterator for IntoFallible<I>
+where
+    I: DoubleEndedIterator<Item = T>,
+{
+    #[inline]
+    fn next_back(&mut self) -> Result<Option<T>, Never> {
+        Ok(self.0.next_back())
+    }
+
+    #[inline]
+    fn try_rfold<B, E2, F>(&mut self, init: B, mut f: F) -> Result<B, E2>
+    where
+        E2: From<Never>,
+        F: FnMut(B, T) -> Result<B, E2>,
+    {
+        self.0.try_rfold(init, |acc, v| f(acc, v))
+    }
+}
+
+
 /// An iterator that yields the iteration count as well as the values of the
 /// underlying iterator.
 #[derive(Clone, Debug)]
@@ -2585,6 +2637,47 @@ where
 }
 
 fn _is_object_safe(_: &dyn DoubleEndedFallibleIterator<Item = (), Error = ()>) {}
+
+/// An error that can't ever happen. Might be replaced with `!`
+/// when stabilized
+pub enum Never {}
+
+/// An extnsion-trait with set of useful methods to convert [`core::iter::Iterator`]
+/// into [`FallibleIterator`]
+pub trait IteratorExt {
+    /// Convert an iterator of `Result`s into `FallibleIterator` by transposition
+    fn transpose_into_fallible<T, E>(self) -> Convert<Self>
+    where
+        Self: iter::Iterator<Item = Result<T, E>> + Sized;
+    
+
+    /// Convert an iterator of anything into `FallibleIterator` by wrapping
+    /// into `Result<T, Never>` where `Never` is an error that can never actually
+    /// happen.
+    fn into_fallible<T>(self) -> IntoFallible<Self>
+    where
+        Self: iter::Iterator<Item = T> + Sized;
+}
+
+impl<I> IteratorExt for I where I : iter::Iterator {
+    /// Convert an iterator of `Result`s into `FallibleIterator` by transposition
+    fn transpose_into_fallible<T, E>(self) -> Convert<Self>
+    where
+        Self: iter::Iterator<Item = Result<T, E>> + Sized,
+    {
+        Convert(self)
+    }
+
+    /// Convert an iterator of anything into `FallibleIterator` by wrapping
+    /// into `Result<T, Never>` where `Never` is an error that can never actually
+    /// happen.
+    fn into_fallible<T>(self) -> IntoFallible<Self>
+    where
+        Self: iter::Iterator<Item = T> + Sized,
+    {
+        IntoFallible(self)
+    }
+}
 
 /// An iterator that yields nothing.
 #[derive(Clone, Debug)]
