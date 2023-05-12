@@ -10,6 +10,7 @@ readme = "README.md"
 categories = ["algorithms", "no-std"]
 
 [features]
+default = ["alloc"]
 alloc = []
-std = []
-default = ["std"]
+# Legacy feature, no longer needed but retained for backwards compatibility.
+std = ["alloc"]
