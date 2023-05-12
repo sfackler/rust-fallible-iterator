@@ -71,34 +71,14 @@ use core::cmp::{self, Ordering};
 use core::iter;
 use core::marker::PhantomData;
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-#[cfg_attr(test, macro_use)]
+
+#[cfg(feature = "alloc")]
 extern crate alloc;
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-mod imports {
-    pub use alloc::boxed::Box;
-    pub use alloc::collections::btree_map::BTreeMap;
-    pub use alloc::collections::btree_set::BTreeSet;
-    pub use alloc::vec::Vec;
-}
+#[cfg(feature = "alloc")]
+use alloc::boxed::Box;
 
-#[cfg(feature = "std")]
-#[cfg_attr(test, macro_use)]
-extern crate std;
-
-#[cfg(feature = "std")]
-mod imports {
-    pub use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-    pub use std::hash::{BuildHasher, Hash};
-    pub use std::prelude::v1::*;
-}
-
-#[cfg(any(feature = "std", feature = "alloc"))]
-use crate::imports::*;
-
-#[cfg(any(feature = "std", feature = "alloc"))]
-#[cfg(test)]
+#[cfg(all(test, feature = "alloc"))]
 mod test;
 
 enum FoldStop<T, E> {
@@ -141,7 +121,7 @@ pub trait FallibleIterator {
     /// Returns `Ok(None)` when iteration is finished.
     ///
     /// The behavior of calling this method after a previous call has returned
-    /// `Ok(None)` or `Err` is implemenetation defined.
+    /// `Ok(None)` or `Err` is implementation defined.
     fn next(&mut self) -> Result<Option<Self::Item>, Self::Error>;
 
     /// Returns bounds on the remaining length of the iterator.
@@ -245,7 +225,7 @@ pub trait FallibleIterator {
         Self: Sized,
         F: FnMut(Self::Item) -> Result<B, Self::Error>,
     {
-        Map { it: self, f: f }
+        Map { it: self, f }
     }
 
     /// Calls a fallible closure on each element of an iterator.
@@ -267,7 +247,7 @@ pub trait FallibleIterator {
         Self: Sized,
         F: FnMut(&Self::Item) -> Result<bool, Self::Error>,
     {
-        Filter { it: self, f: f }
+        Filter { it: self, f }
     }
 
     /// Returns an iterator which both filters and maps. The closure may fail;
@@ -278,7 +258,7 @@ pub trait FallibleIterator {
         Self: Sized,
         F: FnMut(Self::Item) -> Result<Option<B>, Self::Error>,
     {
-        FilterMap { it: self, f: f }
+        FilterMap { it: self, f }
     }
 
     /// Returns an iterator which yields the current iteration count as well
@@ -731,7 +711,7 @@ pub trait FallibleIterator {
         Cloned(self)
     }
 
-    /// Returns an iterator which repeas this iterator endlessly.
+    /// Returns an iterator which repeats this iterator endlessly.
     #[inline]
     fn cycle(self) -> Cycle<Self>
     where
@@ -960,7 +940,7 @@ pub trait FallibleIterator {
         F: FnMut(Self::Error) -> B,
         Self: Sized,
     {
-        MapErr { it: self, f: f }
+        MapErr { it: self, f }
     }
 
     /// Returns an iterator which unwraps all of its elements.
@@ -1001,7 +981,7 @@ impl<I: DoubleEndedFallibleIterator + ?Sized> DoubleEndedFallibleIterator for &m
     }
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "alloc")]
 impl<I: FallibleIterator + ?Sized> FallibleIterator for Box<I> {
     type Item = I::Item;
     type Error = I::Error;
@@ -1022,7 +1002,7 @@ impl<I: FallibleIterator + ?Sized> FallibleIterator for Box<I> {
     }
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "alloc")]
 impl<I: DoubleEndedFallibleIterator + ?Sized> DoubleEndedFallibleIterator for Box<I> {
     #[inline]
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
@@ -1093,10 +1073,16 @@ where
 
 /// An iterator which applies a fallible transform to the elements of the
 /// underlying iterator.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Map<T, F> {
     it: T,
     f: F,
+}
+
+impl<I: core::fmt::Debug, F> core::fmt::Debug for Map<I, F> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Map").field("iter", &self.it).finish()
+    }
 }
 
 impl<T, F, B> FallibleIterator for Map<T, F>
