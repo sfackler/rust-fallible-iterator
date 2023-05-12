@@ -68,9 +68,9 @@
 #![no_std]
 
 use core::cmp::{self, Ordering};
+use core::convert::Infallible;
 use core::iter;
 use core::marker::PhantomData;
-
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
@@ -1409,7 +1409,6 @@ where
     }
 }
 
-
 /// A fallible iterator that wraps a normal iterator over `Result`s.
 #[derive(Clone, Debug)]
 pub struct IntoFallible<I>(I);
@@ -1419,7 +1418,7 @@ where
     I: iter::Iterator<Item = T>,
 {
     type Item = T;
-    type Error = Never;
+    type Error = Infallible;
 
     #[inline]
     fn next(&mut self) -> Result<Option<T>, Self::Error> {
@@ -1432,12 +1431,18 @@ where
     }
 
     #[inline]
-    fn try_fold<B, E2, F>(&mut self, init: B, mut f: F) -> Result<B, E2>
+    fn try_fold<B, E2, F>(&mut self, init: B, f: F) -> Result<B, E2>
     where
-        E2: From<Never>,
+        E2: From<Infallible>,
         F: FnMut(B, T) -> Result<B, E2>,
     {
-        self.0.try_fold(init, |acc, v| f(acc, v))
+        self.0.try_fold(init, f)
+    }
+}
+
+impl<T, I: iter::Iterator<Item = T>> From<I> for IntoFallible<I> {
+    fn from(value: I) -> Self {
+        Self(value)
     }
 }
 
@@ -1446,20 +1451,19 @@ where
     I: DoubleEndedIterator<Item = T>,
 {
     #[inline]
-    fn next_back(&mut self) -> Result<Option<T>, Never> {
+    fn next_back(&mut self) -> Result<Option<T>, Infallible> {
         Ok(self.0.next_back())
     }
 
     #[inline]
-    fn try_rfold<B, E2, F>(&mut self, init: B, mut f: F) -> Result<B, E2>
+    fn try_rfold<B, E2, F>(&mut self, init: B, f: F) -> Result<B, E2>
     where
-        E2: From<Never>,
+        E2: From<Infallible>,
         F: FnMut(B, T) -> Result<B, E2>,
     {
-        self.0.try_rfold(init, |acc, v| f(acc, v))
+        self.0.try_rfold(init, f)
     }
 }
-
 
 /// An iterator that yields the iteration count as well as the values of the
 /// underlying iterator.
@@ -2638,10 +2642,6 @@ where
 
 fn _is_object_safe(_: &dyn DoubleEndedFallibleIterator<Item = (), Error = ()>) {}
 
-/// An error that can't ever happen. Might be replaced with `!`
-/// when stabilized
-pub enum Never {}
-
 /// An extnsion-trait with set of useful methods to convert [`core::iter::Iterator`]
 /// into [`FallibleIterator`]
 pub trait IteratorExt {
@@ -2649,17 +2649,19 @@ pub trait IteratorExt {
     fn transpose_into_fallible<T, E>(self) -> Convert<Self>
     where
         Self: iter::Iterator<Item = Result<T, E>> + Sized;
-    
 
     /// Convert an iterator of anything into `FallibleIterator` by wrapping
-    /// into `Result<T, Never>` where `Never` is an error that can never actually
+    /// into `Result<T, Infallible>` where `Infallible` is an error that can never actually
     /// happen.
     fn into_fallible<T>(self) -> IntoFallible<Self>
     where
         Self: iter::Iterator<Item = T> + Sized;
 }
 
-impl<I> IteratorExt for I where I : iter::Iterator {
+impl<I> IteratorExt for I
+where
+    I: iter::Iterator,
+{
     /// Convert an iterator of `Result`s into `FallibleIterator` by transposition
     fn transpose_into_fallible<T, E>(self) -> Convert<Self>
     where
@@ -2669,7 +2671,7 @@ impl<I> IteratorExt for I where I : iter::Iterator {
     }
 
     /// Convert an iterator of anything into `FallibleIterator` by wrapping
-    /// into `Result<T, Never>` where `Never` is an error that can never actually
+    /// into `Result<T, Infallible>` where `Infallible` is an error that can never actually
     /// happen.
     fn into_fallible<T>(self) -> IntoFallible<Self>
     where
@@ -2742,7 +2744,7 @@ pub fn once_err<T, E>(value: E) -> OnceErr<T, E> {
 impl<T, E> FallibleIterator for OnceErr<T, E> {
     type Item = T;
     type Error = E;
-    
+
     #[inline]
     fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
         match self.1.take() {
