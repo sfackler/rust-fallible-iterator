@@ -1431,12 +1431,12 @@ where
     }
 
     #[inline]
-    fn try_fold<B, E2, F>(&mut self, init: B, mut f: F) -> Result<B, E2>
+    fn try_fold<B, E2, F>(&mut self, init: B, f: F) -> Result<B, E2>
     where
         E2: From<Infallible>,
         F: FnMut(B, T) -> Result<B, E2>,
     {
-        self.0.try_fold(init, |acc, v| f(acc, v))
+        self.0.try_fold(init, f)
     }
 }
 
@@ -1456,12 +1456,12 @@ where
     }
 
     #[inline]
-    fn try_rfold<B, E2, F>(&mut self, init: B, mut f: F) -> Result<B, E2>
+    fn try_rfold<B, E2, F>(&mut self, init: B, f: F) -> Result<B, E2>
     where
         E2: From<Infallible>,
         F: FnMut(B, T) -> Result<B, E2>,
     {
-        self.0.try_rfold(init, |acc, v| f(acc, v))
+        self.0.try_rfold(init, f)
     }
 }
 
