@@ -12,3 +12,5 @@ categories = ["algorithms", "no-std"]
 [features]
 default = ["alloc"]
 alloc = []
+# Legacy feature, no longer needed but retained for backwards compatibility.
+std = ["alloc"]
