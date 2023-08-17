@@ -152,6 +152,24 @@ pub trait FallibleIterator {
         self.fold(0, |n, _| Ok(n + 1))
     }
 
+    #[inline]
+    fn sum<I>(self) -> Result<I, Self::Error>
+    where
+        Self: Sized,
+        I: iter::Sum<Self::Item>,
+    {
+        iter::Sum::sum(self.iterator())
+    }
+
+    #[inline]
+    fn product<I>(self) -> Result<I, Self::Error>
+    where
+        Self: Sized,
+        I: iter::Product<Self::Item>,
+    {
+        iter::Product::product(self.iterator())
+    }
+
     /// Returns the last element of the iterator.
     #[inline]
     fn last(self) -> Result<Option<Self::Item>, Self::Error>
