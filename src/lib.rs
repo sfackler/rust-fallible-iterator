@@ -153,6 +153,7 @@ pub trait FallibleIterator {
     }
 
     #[inline]
+    /// Sums the iterator elements.
     fn sum<I>(self) -> Result<I, Self::Error>
     where
         Self: Sized,
@@ -162,6 +163,7 @@ pub trait FallibleIterator {
     }
 
     #[inline]
+    /// Returns the iterator elements product.
     fn product<I>(self) -> Result<I, Self::Error>
     where
         Self: Sized,
