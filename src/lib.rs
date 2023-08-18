@@ -2640,6 +2640,17 @@ where
     }
 }
 
+impl<T> iter::DoubleEndedIterator for Unwrap<T>
+where
+    T: DoubleEndedFallibleIterator,
+    T::Error: core::fmt::Debug,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<T::Item> {
+        self.0.next_back().unwrap()
+    }
+}
+
 fn _is_object_safe(_: &dyn DoubleEndedFallibleIterator<Item = (), Error = ()>) {}
 
 /// An extnsion-trait with set of useful methods to convert [`core::iter::Iterator`]
