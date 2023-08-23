@@ -58,6 +58,26 @@ fn count() {
 }
 
 #[test]
+fn sum() {
+    assert_eq!(
+        convert([0, 1, 2, 3].iter().map(Ok::<&u32, ()>))
+            .sum::<u32>()
+            .unwrap(),
+        6,
+    );
+}
+
+#[test]
+fn product() {
+    assert_eq!(
+        convert([1, 2, 3, 4].iter().map(Ok::<&u32, ()>))
+            .product::<u32>()
+            .unwrap(),
+        24
+    )
+}
+
+#[test]
 fn enumerate() {
     let it = convert(vec![5, 6, 7, 8].into_iter().map(Ok::<u32, ()>)).enumerate();
 
