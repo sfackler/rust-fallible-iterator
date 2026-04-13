@@ -1064,8 +1064,7 @@ pub trait DoubleEndedFallibleIterator: FallibleIterator {
     fn advance_back_by(&mut self, n: usize) -> Result<Result<(), NonZeroUsize>, Self::Error> {
         for i in 0..n {
             if self.next_back()?.is_none() {
-                // SAFETY: n - i is always in range 1..=n since i < n
-                return Ok(Err(unsafe { NonZeroUsize::new_unchecked(n - i) }));
+                return Ok(Err(NonZeroUsize::new(n - i).expect("n - i is nonzero since i < n")));
             }
         }
         Ok(Ok(()))
