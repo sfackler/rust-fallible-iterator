@@ -1,7 +1,7 @@
 use alloc::{vec, vec::Vec};
 use core::{iter, ops::Range};
 
-use super::{convert, FallibleIterator, IntoFallible};
+use super::{convert, DoubleEndedFallibleIterator, FallibleIterator, IntoFallible};
 
 #[test]
 fn all() {
@@ -304,6 +304,32 @@ fn nth() {
     assert_eq!(it.nth(1).unwrap(), Some(1));
     assert_eq!(it.nth(0).unwrap(), Some(2));
     assert_eq!(it.nth(2).unwrap(), None);
+}
+
+#[test]
+fn nth_back() {
+    let mut it = convert(vec![0, 1, 2, 3].into_iter().map(Ok::<i32, ()>));
+    assert_eq!(it.nth_back(1).unwrap(), Some(2));
+    assert_eq!(it.nth_back(0).unwrap(), Some(1));
+    assert_eq!(it.nth_back(2).unwrap(), None);
+}
+
+#[test]
+fn advance_back_by() {
+    // Full advance succeeds
+    let mut it = convert(vec![0, 1, 2, 3].into_iter().map(Ok::<i32, ()>));
+    assert_eq!(it.advance_back_by(2).unwrap(), Ok(()));
+    assert_eq!(it.next_back().unwrap(), Some(1));
+
+    // Partial advance when iterator is exhausted returns remaining count
+    let mut it = convert(vec![0, 1].into_iter().map(Ok::<i32, ()>));
+    let remaining = it.advance_back_by(5).unwrap().unwrap_err();
+    assert_eq!(remaining.get(), 3);
+
+    // Advance by zero always succeeds
+    let mut it = convert(vec![0, 1].into_iter().map(Ok::<i32, ()>));
+    assert_eq!(it.advance_back_by(0).unwrap(), Ok(()));
+    assert_eq!(it.next_back().unwrap(), Some(1));
 }
 
 #[test]

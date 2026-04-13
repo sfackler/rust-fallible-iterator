@@ -71,6 +71,7 @@ use core::cmp::{self, Ordering};
 use core::convert::Infallible;
 use core::iter;
 use core::marker::PhantomData;
+use core::num::NonZeroUsize;
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
@@ -999,6 +1000,16 @@ impl<I: DoubleEndedFallibleIterator + ?Sized> DoubleEndedFallibleIterator for &m
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
         (**self).next_back()
     }
+
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<Result<(), NonZeroUsize>, I::Error> {
+        (**self).advance_back_by(n)
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Result<Option<I::Item>, I::Error> {
+        (**self).nth_back(n)
+    }
 }
 
 #[cfg(feature = "alloc")]
@@ -1028,12 +1039,45 @@ impl<I: DoubleEndedFallibleIterator + ?Sized> DoubleEndedFallibleIterator for Bo
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
         (**self).next_back()
     }
+
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<Result<(), NonZeroUsize>, I::Error> {
+        (**self).advance_back_by(n)
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Result<Option<I::Item>, I::Error> {
+        (**self).nth_back(n)
+    }
 }
 
 /// A fallible iterator able to yield elements from both ends.
 pub trait DoubleEndedFallibleIterator: FallibleIterator {
     /// Advances the end of the iterator, returning the last value.
     fn next_back(&mut self) -> Result<Option<Self::Item>, Self::Error>;
+
+    /// Advances the back of the iterator by `n` elements.
+    ///
+    /// Returns `Ok(Ok(()))` if `n` elements were consumed, or `Ok(Err(k))` if the iterator
+    /// was exhausted with `k` elements remaining. Returns `Err` if the iterator itself fails.
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<Result<(), NonZeroUsize>, Self::Error> {
+        for i in 0..n {
+            if self.next_back()?.is_none() {
+                return Ok(Err(NonZeroUsize::new(n - i).expect("n - i is nonzero since i < n")));
+            }
+        }
+        Ok(Ok(()))
+    }
+
+    /// Returns the `n`th element from the back of the iterator.
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Result<Option<Self::Item>, Self::Error> {
+        if self.advance_back_by(n)?.is_err() {
+            return Ok(None);
+        }
+        self.next_back()
+    }
 
     /// Applies a function over the elements of the iterator in reverse order, producing a single final value.
     #[inline]
@@ -2302,6 +2346,11 @@ where
     }
 
     #[inline]
+    fn nth(&mut self, n: usize) -> Result<Option<I::Item>, I::Error> {
+        self.0.nth_back(n)
+    }
+
+    #[inline]
     fn try_fold<B, E, F>(&mut self, init: B, f: F) -> Result<B, E>
     where
         E: From<I::Error>,
@@ -2318,6 +2367,11 @@ where
     #[inline]
     fn next_back(&mut self) -> Result<Option<I::Item>, I::Error> {
         self.0.next()
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Result<Option<I::Item>, I::Error> {
+        self.0.nth(n)
     }
 
     #[inline]
