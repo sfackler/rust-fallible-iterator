@@ -208,6 +208,28 @@ fn last() {
 }
 
 #[test]
+fn chain_last() {
+    macro_rules! c {
+        ($($x:expr),*) => {
+            convert(vec![$($x),*].into_iter().map(Ok::<u32, ()>))
+        };
+    }
+
+    // back non-empty: last element comes from `back`
+    assert_eq!(c![0, 1, 2].chain(c![3, 4]).last().unwrap(), Some(4));
+    // back empty: last element must come from `front` (regression test)
+    assert_eq!(c![0, 1, 2].chain(c![]).last().unwrap(), Some(2));
+    // front empty: last element comes from `back`
+    assert_eq!(c![].chain(c![3, 4]).last().unwrap(), Some(4));
+    // both empty
+    assert_eq!(c![].chain(c![]).last().unwrap(), None);
+    // after advancing past all of `front`, `back` empty
+    let mut it = c![0, 1].chain(c![]);
+    assert_eq!(it.next().unwrap(), Some(0));
+    assert_eq!(it.last().unwrap(), Some(1));
+}
+
+#[test]
 fn map() {
     let it = convert(vec![0, 1, 2, 3, 4].into_iter().map(Ok::<u32, ()>)).map(|n| Ok(n * 2));
     fn assert_debug(_: &impl core::fmt::Debug) {}
