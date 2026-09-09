@@ -1307,8 +1307,8 @@ where
     fn last(self) -> Result<Option<T::Item>, T::Error> {
         match self.state {
             ChainState::Both => {
-                self.front.last()?;
-                self.back.last()
+                let front_last = self.front.last()?;
+                Ok(self.back.last()?.or(front_last))
             }
             ChainState::Front => self.front.last(),
             ChainState::Back => self.back.last(),
